@@ -19,6 +19,10 @@ SoundCloud's terms restrict downloading other people's content without permissio
 """.strip()
 
 
+class DownloadFailed(Exception):
+    """Raised when yt-dlp cannot download or resolve a track."""
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Download your SoundCloud tracks (profile or single track URL).",
@@ -155,6 +159,75 @@ def validate_soundcloud_url(url: str) -> None:
         raise ValueError(
             "URL does not look like SoundCloud. Pass a soundcloud.com profile or track link."
         )
+
+
+def is_soundcloud_url(value: str) -> bool:
+    lowered = value.strip().lower()
+    return "soundcloud.com" in lowered or "on.soundcloud.com" in lowered
+
+
+def resolve_downloaded_path(ydl: YoutubeDL, info: dict) -> Path:
+    """Resolve the on-disk path for a single downloaded (or simulated) entry."""
+    requested = info.get("requested_downloads") or []
+    if requested:
+        filepath = requested[0].get("filepath")
+        if filepath:
+            return Path(filepath)
+
+    filepath = info.get("filepath") or info.get("_filename")
+    if filepath:
+        return Path(filepath)
+
+    prepared = Path(ydl.prepare_filename(info))
+    # After FFmpegExtractAudio the extension may have changed.
+    if not prepared.is_file():
+        for candidate in prepared.parent.glob(prepared.stem + ".*"):
+            if candidate.suffix.lower() not in {".json", ".description", ".jpg", ".png", ".webp"}:
+                return candidate
+    return prepared
+
+
+def download_one(url: str, opts: dict) -> Path:
+    """Download a single SoundCloud track and return its file path.
+
+    Raises DownloadFailed on network/extract errors, ValueError for playlists/profiles.
+    """
+    single_opts = dict(opts)
+    # Prefer failing early on multi-item pages when a single track is required.
+    single_opts["noplaylist"] = True
+
+    with YoutubeDL(single_opts) as ydl:
+        try:
+            info = ydl.extract_info(url, download=not single_opts.get("simulate"))
+        except DownloadError as exc:
+            raise DownloadFailed(str(exc)) from exc
+
+        if info is None:
+            raise DownloadFailed("Nothing found at that URL.")
+
+        entries = info.get("entries")
+        if entries is not None:
+            items = [e for e in entries if e]
+            if len(items) == 0:
+                raise DownloadFailed("Nothing found at that URL.")
+            if len(items) > 1:
+                raise ValueError(
+                    "Expected a single track URL, but got a profile/playlist. "
+                    "Pass one track link (…/artist/track-slug)."
+                )
+            info = items[0]
+            if not single_opts.get("simulate"):
+                # When noplaylist still yields one entry dict without a download, fetch it.
+                if not info.get("requested_downloads") and not info.get("filepath"):
+                    info = ydl.extract_info(
+                        info.get("webpage_url") or info.get("url") or url,
+                        download=True,
+                    )
+
+        path = resolve_downloaded_path(ydl, info)
+        if not single_opts.get("simulate") and not path.is_file():
+            raise DownloadFailed(f"Download finished but file not found: {path}")
+        return path
 
 
 def download(url: str, opts: dict) -> int:

@@ -1,0 +1,6 @@
+# Extra deps for make_instrumental.py (Demucs + PyTorch).
+# Install with: pip install -r requirements-instrumental.txt
+# Or: pip install -e ".[instrumental]"
+-r requirements.txt
+demucs>=4.0.0
+numpy>=1.26

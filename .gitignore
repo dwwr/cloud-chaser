@@ -6,8 +6,8 @@ dist/
 build/
 downloads/
 recovered/
+instrumentals/
+separated/
 cookies.txt
 *.cookies
 .DS_Store
-.DS_Store
-.venv/
