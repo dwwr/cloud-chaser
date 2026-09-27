@@ -1,0 +1,19 @@
+[project]
+name = "soundcloud-pull"
+version = "1.0.0"
+description = "Download your own SoundCloud tracks when you've lost the original files."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "yt-dlp>=2025.1.15",
+]
+
+[project.scripts]
+soundcloud-pull = "soundcloud_pull:main"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["soundcloud_pull"]
