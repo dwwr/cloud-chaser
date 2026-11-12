@@ -17,10 +17,11 @@ instrumental = [
 [project.scripts]
 soundcloud-pull = "soundcloud_pull:main"
 make-instrumental = "make_instrumental:main"
+cloud-chaser = "cli:main"
 
 [build-system]
 requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-py-modules = ["soundcloud_pull", "make_instrumental"]
+py-modules = ["soundcloud_pull", "make_instrumental", "cli", "server"]

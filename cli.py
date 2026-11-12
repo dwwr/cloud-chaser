@@ -1,0 +1,171 @@
+#!/usr/bin/env python3
+
+from __future__ import annotations
+
+import argparse
+import sys
+from pathlib import Path
+
+import make_instrumental
+import soundcloud_pull
+from soundcloud_pull import (
+    DownloadFailed,
+    build_ydl_opts,
+    download_one,
+    validate_soundcloud_url,
+)
+
+
+USAGE = """
+usage: cloud-chaser <command> [args]
+
+commands:
+  pull           Download a profile, playlist, or track
+  track          Download one track
+  instrumental   Download one track and save an instrumental
+  serve          Run the local web app
+
+Run cloud-chaser <command> --help for that command's flags.
+""".strip()
+
+
+TRACK_BANNER = """
+cloud-chaser track — download one SoundCloud track
+
+Only use this for tracks you uploaded or otherwise have the right to download.
+SoundCloud's terms restrict downloading other people's content without permission.
+""".strip()
+
+
+def build_track_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="cloud-chaser track",
+        description="Download one SoundCloud track.",
+        epilog=(
+            "Examples:\n"
+            "  cloud-chaser track https://soundcloud.com/you/track-slug\n"
+            "  cloud-chaser track -o ./recovered --format mp3 URL\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "url",
+        help="SoundCloud track URL",
+    )
+    parser.add_argument(
+        "-o",
+        "--output-dir",
+        default="./downloads",
+        help="Directory to save the file (default: ./downloads)",
+    )
+    parser.add_argument(
+        "--format",
+        choices=("best", "mp3", "m4a", "opus"),
+        default="best",
+        help="Preferred audio format (default: best available)",
+    )
+    parser.add_argument(
+        "--cookies",
+        metavar="FILE",
+        help="Netscape cookies file for private tracks",
+    )
+    parser.add_argument(
+        "--cookies-from-browser",
+        metavar="BROWSER",
+        help="Load cookies from a local browser (e.g. chrome, firefox, brave)",
+    )
+    parser.add_argument(
+        "-q",
+        "--quiet",
+        action="store_true",
+        help="Less verbose output",
+    )
+    return parser
+
+
+def track_main(argv: list[str] | None = None) -> int:
+    parser = build_track_parser()
+    args = parser.parse_args(argv)
+
+    if not args.quiet:
+        print(TRACK_BANNER)
+        print()
+
+    try:
+        validate_soundcloud_url(args.url)
+        output_dir = Path(args.output_dir).expanduser().resolve()
+        output_dir.mkdir(parents=True, exist_ok=True)
+        opts = build_ydl_opts(
+            output_dir=output_dir,
+            audio_format=args.format,
+            cookies=args.cookies,
+            cookies_from_browser=args.cookies_from_browser,
+            limit=None,
+            dry_run=False,
+            quiet=args.quiet,
+        )
+        path = download_one(args.url, opts)
+    except (ValueError, FileNotFoundError) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 2
+    except DownloadFailed as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        print(
+            "\nTips:\n"
+            "  • Use a single track URL, not a profile or playlist.\n"
+            "  • For private tracks, pass --cookies or --cookies-from-browser.",
+            file=sys.stderr,
+        )
+        return 1
+
+    if args.quiet:
+        print(path)
+    else:
+        print(f"Downloaded: {path}")
+    return 0
+
+
+def serve_main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        prog="cloud-chaser serve",
+        description="Run the local web app and job server.",
+    )
+    parser.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="Address to bind (default: 127.0.0.1)",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8765,
+        help="Port to listen on (default: 8765)",
+    )
+    args = parser.parse_args(argv)
+    from server import serve
+
+    return serve(args.host, args.port)
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = list(sys.argv[1:] if argv is None else argv)
+    if not args or args[0] in ("-h", "--help"):
+        print(USAGE)
+        return 0
+
+    command, rest = args[0], args[1:]
+    if command == "pull":
+        return soundcloud_pull.main(rest)
+    if command == "track":
+        return track_main(rest)
+    if command == "instrumental":
+        return make_instrumental.main(rest)
+    if command == "serve":
+        return serve_main(rest)
+
+    print(f"Unknown command: {command}\n\n{USAGE}", file=sys.stderr)
+    return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
