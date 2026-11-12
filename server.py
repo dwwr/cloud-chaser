@@ -97,6 +97,9 @@ def list_audio(directory: Path) -> list[Path]:
             continue
         found.append(path)
     found.sort()
+    separated = [path for path in found if "instrumentals" in path.parts]
+    if separated:
+        return separated
     return found
 
 

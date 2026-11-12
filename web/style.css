@@ -266,7 +266,9 @@ select:focus-visible,
   margin-top: 1rem;
 }
 
-#stems[hidden] {
+#stems[hidden],
+#stems fieldset[hidden],
+#stems .check[hidden] {
   display: none;
 }
 

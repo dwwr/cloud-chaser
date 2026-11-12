@@ -59,7 +59,7 @@ const uploadTypes = [
 ];
 
 const presets = {
-  instrumental: ["drums", "bass", "guitar", "piano", "other"],
+  instrumental: [],
   vocals: ["vocals"],
   all: stemNames.map(([name]) => name),
 };
@@ -80,6 +80,7 @@ for (const [name, label] of stemNames) {
 }
 
 applyPreset("instrumental");
+syncPresetExtras();
 fileInput.accept = uploadTypes.map(([ext]) => "." + ext).join(",");
 fileTypes.textContent = uploadTypeList();
 renderFormats("track");
@@ -95,6 +96,7 @@ form.addEventListener("change", (event) => {
   }
   syncSubmix();
   syncStemPanel(mode);
+  syncPresetExtras();
   syncSource();
   if (target === fileInput) {
     noteFile(fileInput.files && fileInput.files[0]);
@@ -122,8 +124,9 @@ form.addEventListener("submit", async (event) => {
   }
   const body = { url: urlInput.value.trim(), mode, format: audioFormat };
   if (mode === "instrumental") {
-    body.submix = submixInput.checked;
-    if (presetSelect.value !== "instrumental") {
+    const single = presetSelect.value === "instrumental";
+    body.submix = !single && submixInput.checked;
+    if (!single) {
       body.stems = checkedStems();
     }
   }
@@ -229,6 +232,21 @@ function applyPreset(name) {
   for (const input of stemList.querySelectorAll("input")) {
     input.checked = selected.has(input.value);
   }
+  if (name === "instrumental") {
+    submixInput.checked = false;
+  }
+}
+
+function syncPresetExtras() {
+  const single = presetSelect.value === "instrumental";
+  const fieldset = stemsPanel.querySelector("fieldset");
+  const submixRow = submixInput.closest(".check");
+  if (fieldset) {
+    fieldset.hidden = single;
+  }
+  if (submixRow) {
+    submixRow.hidden = single;
+  }
 }
 
 function syncSubmix() {
@@ -251,10 +269,10 @@ function hintFor(mode) {
     return hints.track;
   }
   const selected = checkedStems();
+  if (presetSelect.value === "instrumental") {
+    return "Saves one instrumental file with the vocals removed. This can take several minutes.";
+  }
   if (presetSelect.value === "all" || selected.includes("guitar") || selected.includes("piano")) {
-    if (presetSelect.value === "instrumental") {
-      return hints.instrumental;
-    }
     return hints.fine;
   }
   return hints.instrumental;
