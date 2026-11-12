@@ -7,21 +7,40 @@ const statusEl = document.querySelector("#status");
 const filesEl = document.querySelector("#files");
 const logEl = document.querySelector("#log");
 
+const formatSelect = document.querySelector("#format");
+
 const hints = {
   track: "Saves the audio file for that track.",
   instrumental: "Separates vocals locally. This can take several minutes.",
 };
 
+const formats = {
+  track: [
+    ["best", "Best available"],
+    ["mp3", "MP3"],
+    ["m4a", "M4A"],
+    ["opus", "Opus"],
+  ],
+  instrumental: [
+    ["wav", "WAV"],
+    ["mp3", "MP3"],
+  ],
+};
+
 let ticket = 0;
+
+renderFormats("track");
 
 form.addEventListener("change", () => {
   const mode = String(new FormData(form).get("mode") || "track");
   hint.textContent = hints[mode] || "";
+  renderFormats(mode);
 });
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   const mode = String(new FormData(form).get("mode") || "track");
+  const audioFormat = String(new FormData(form).get("format") || "");
   const url = urlInput.value.trim();
   ticket += 1;
   const mine = ticket;
@@ -37,7 +56,7 @@ form.addEventListener("submit", async (event) => {
     const response = await fetch("/api/jobs", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url, mode }),
+      body: JSON.stringify({ url, mode, format: audioFormat }),
     });
     const payload = await readJson(response);
     if (mine !== ticket) {
@@ -115,6 +134,21 @@ function finish(text, state) {
   setStatus(text, state);
   submitButton.disabled = false;
   submitButton.textContent = "Start";
+}
+
+function renderFormats(mode) {
+  const choices = formats[mode] || formats.track;
+  const current = formatSelect.value;
+  formatSelect.replaceChildren();
+  for (const [value, label] of choices) {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = label;
+    formatSelect.append(option);
+  }
+  if (choices.some(([value]) => value === current)) {
+    formatSelect.value = current;
+  }
 }
 
 async function readJson(response) {

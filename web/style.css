@@ -75,7 +75,8 @@ form,
   font-size: 0.92rem;
 }
 
-input[type="url"] {
+input[type="url"],
+select {
   width: 100%;
   padding: 0.75rem 0.8rem;
   border: 1px solid var(--line);
@@ -83,6 +84,10 @@ input[type="url"] {
   background: #12110f;
   color: var(--ink);
   font: inherit;
+}
+
+.format {
+  margin-top: 1rem;
 }
 
 fieldset {
@@ -149,6 +154,7 @@ button:disabled {
 
 button:focus-visible,
 input:focus-visible,
+select:focus-visible,
 .mode:focus-within {
   outline: 2px solid var(--accent);
   outline-offset: 2px;

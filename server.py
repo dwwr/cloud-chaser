@@ -49,17 +49,22 @@ STATIC_FILES = {
     "app.js": "text/javascript; charset=utf-8",
 }
 MODES = {"track", "instrumental"}
+FORMATS = {
+    "track": {"best", "mp3", "m4a", "opus"},
+    "instrumental": {"wav", "mp3"},
+}
+DEFAULT_FORMAT = {"track": "best", "instrumental": "wav"}
 LOG_LIMIT = 100_000
 
 
-def command_for(mode: str, url: str, job_dir: Path) -> list[str]:
+def command_for(mode: str, url: str, job_dir: Path, audio_format: str) -> list[str]:
     cli = str(ROOT / "cli.py")
     python = sys.executable
     downloads = str(job_dir / "downloads")
     if mode == "track":
-        return [python, cli, "track", "-o", downloads, "--", url]
+        return [python, cli, "track", "-o", downloads, "--format", audio_format, "--", url]
     instrumental = str(job_dir / "instrumentals")
-    return [
+    command = [
         python,
         cli,
         "instrumental",
@@ -67,9 +72,11 @@ def command_for(mode: str, url: str, job_dir: Path) -> list[str]:
         downloads,
         "--instrumental-dir",
         instrumental,
-        "--",
-        url,
     ]
+    if audio_format == "mp3":
+        command.append("--mp3")
+    command.extend(["--", url])
+    return command
 
 
 def list_audio(directory: Path) -> list[Path]:
@@ -116,9 +123,11 @@ class JobStore:
         self.lock = threading.Lock()
         self.jobs: dict[str, dict[str, object]] = {}
 
-    def create(self, url: str, mode: str) -> dict[str, object]:
+    def create(self, url: str, mode: str, audio_format: str) -> dict[str, object]:
         if mode not in MODES:
             raise ValueError("Mode must be track or instrumental.")
+        if audio_format not in FORMATS[mode]:
+            raise ValueError("That file type is not available for this download.")
         validate_source_url(url)
         job_id = uuid.uuid4().hex
         directory = self.root / job_id
@@ -133,7 +142,7 @@ class JobStore:
             }
         thread = threading.Thread(
             target=self.run,
-            args=(job_id, command_for(mode, url, directory), log_path),
+            args=(job_id, command_for(mode, url, directory, audio_format), log_path),
             daemon=True,
         )
         thread.start()
@@ -272,14 +281,18 @@ class Handler(BaseHTTPRequestHandler):
             return
         url = payload.get("url")
         mode = payload.get("mode")
+        audio_format = payload.get("format", DEFAULT_FORMAT.get(mode if isinstance(mode, str) else "", "best"))
         if not isinstance(url, str) or not url.strip():
             self.send_json(400, {"error": "A track link is required."})
             return
         if not isinstance(mode, str):
             self.send_json(400, {"error": "Mode must be track or instrumental."})
             return
+        if not isinstance(audio_format, str) or not audio_format:
+            self.send_json(400, {"error": "Choose a file type."})
+            return
         try:
-            snapshot = self.server.jobs.create(url.strip(), mode)
+            snapshot = self.server.jobs.create(url.strip(), mode, audio_format)
         except ValueError as exc:
             self.send_json(400, {"error": str(exc)})
             return
