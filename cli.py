@@ -24,10 +24,11 @@ USAGE = """
 usage: cloud-chaser <command> [args]
 
 commands:
+  run            Open the local web app
+  serve          Open the local web app
   pull           Download a profile, playlist, or track
   track          Download one track
   instrumental   Download one track and save an instrumental
-  serve          Run the local web app
 
 Run cloud-chaser <command> --help for that command's flags.
 """.strip()
@@ -171,9 +172,9 @@ def save_local_track(source: Path, output_dir: Path, audio_format: str) -> Path:
     return dest
 
 
-def serve_main(argv: list[str] | None = None) -> int:
+def serve_main(argv: list[str] | None = None, *, prog: str = "cloud-chaser run") -> int:
     parser = argparse.ArgumentParser(
-        prog="cloud-chaser serve",
+        prog=prog,
         description="Run the local web app and job server.",
     )
     parser.add_argument(
@@ -206,8 +207,8 @@ def main(argv: list[str] | None = None) -> int:
         return track_main(rest)
     if command == "instrumental":
         return make_instrumental.main(rest)
-    if command == "serve":
-        return serve_main(rest)
+    if command in {"run", "serve"}:
+        return serve_main(rest, prog=f"cloud-chaser {command}")
 
     print(f"Unknown command: {command}\n\n{USAGE}", file=sys.stderr)
     return 2

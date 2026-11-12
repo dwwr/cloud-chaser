@@ -1,5 +1,11 @@
 # soundcloud-pull
 
+```bash
+python cli.py run
+```
+
+Opens the local app at http://127.0.0.1:8765.
+
 Recover audio from **your** SoundCloud uploads when you've lost the original files.
 
 This CLI wraps [yt-dlp](https://github.com/yt-dlp/yt-dlp) so you can download a whole profile, a playlist, or a single track URL into a local folder. An optional second script uses [Demucs](https://github.com/adefossez/demucs) to separate vocals and save an instrumental.
