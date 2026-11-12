@@ -12,6 +12,11 @@ const stemsPanel = document.querySelector("#stems");
 const presetSelect = document.querySelector("#preset");
 const stemList = document.querySelector("#stem-list");
 const submixInput = document.querySelector("#submix");
+const fileInput = document.querySelector("#file");
+const linkSource = document.querySelector("#link-source");
+const fileSource = document.querySelector("#file-source");
+const fileTypes = document.querySelector("#file-types");
+const fileError = document.querySelector("#file-error");
 
 const hints = {
   track: "Saves the audio file for that track.",
@@ -41,6 +46,18 @@ const stemNames = [
   ["other", "Other"],
 ];
 
+const uploadTypes = [
+  ["wav", "WAV"],
+  ["mp3", "MP3"],
+  ["m4a", "M4A"],
+  ["flac", "FLAC"],
+  ["ogg", "OGG"],
+  ["opus", "Opus"],
+  ["aac", "AAC"],
+  ["mp4", "MP4"],
+  ["webm", "WebM"],
+];
+
 const presets = {
   instrumental: ["drums", "bass", "guitar", "piano", "other"],
   vocals: ["vocals"],
@@ -63,7 +80,10 @@ for (const [name, label] of stemNames) {
 }
 
 applyPreset("instrumental");
+fileInput.accept = uploadTypes.map(([ext]) => "." + ext).join(",");
+fileTypes.textContent = uploadTypeList();
 renderFormats("track");
+syncSource();
 
 form.addEventListener("change", (event) => {
   const mode = String(new FormData(form).get("mode") || "track");
@@ -75,6 +95,10 @@ form.addEventListener("change", (event) => {
   }
   syncSubmix();
   syncStemPanel(mode);
+  syncSource();
+  if (target === fileInput) {
+    noteFile(fileInput.files && fileInput.files[0]);
+  }
   hint.textContent = hintFor(mode);
   renderFormats(mode);
 });
@@ -83,8 +107,20 @@ form.addEventListener("submit", async (event) => {
   event.preventDefault();
   const mode = String(new FormData(form).get("mode") || "track");
   const audioFormat = String(new FormData(form).get("format") || "");
-  const url = urlInput.value.trim();
-  const body = { url, mode, format: audioFormat };
+  const fromFile = source() === "file";
+  const file = fromFile && fileInput.files ? fileInput.files[0] : null;
+  if (fromFile) {
+    if (!file) {
+      showFileError("Choose an audio file.");
+      return;
+    }
+    if (!allowedUpload(file.name)) {
+      showFileError(uploadTypeMessage());
+      return;
+    }
+    clearFileError();
+  }
+  const body = { url: urlInput.value.trim(), mode, format: audioFormat };
   if (mode === "instrumental") {
     body.submix = submixInput.checked;
     if (presetSelect.value !== "instrumental") {
@@ -102,11 +138,7 @@ form.addEventListener("submit", async (event) => {
   submitButton.textContent = "Working…";
 
   try {
-    const response = await fetch("/api/jobs", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+    const response = await fetch("/api/jobs", fromFile ? fileRequest(file, body) : jsonRequest(body));
     const payload = await readJson(response);
     if (mine !== ticket) {
       return;
@@ -213,6 +245,9 @@ function syncStemPanel(mode) {
 
 function hintFor(mode) {
   if (mode !== "instrumental") {
+    if (source() === "file") {
+      return "Saves that file. MP3, M4A, and Opus convert it.";
+    }
     return hints.track;
   }
   const selected = checkedStems();
@@ -226,7 +261,12 @@ function hintFor(mode) {
 }
 
 function renderFormats(mode) {
-  const choices = formats[mode] || formats.track;
+  const choices = (formats[mode] || formats.track).map(([value, label]) => {
+    if (value === "best" && source() === "file") {
+      return [value, "Original"];
+    }
+    return [value, label];
+  });
   const current = formatSelect.value;
   formatSelect.replaceChildren();
   for (const [value, label] of choices) {
@@ -238,6 +278,80 @@ function renderFormats(mode) {
   if (choices.some(([value]) => value === current)) {
     formatSelect.value = current;
   }
+}
+
+function source() {
+  return String(new FormData(form).get("source") || "link");
+}
+
+function syncSource() {
+  const file = source() === "file";
+  linkSource.hidden = file;
+  fileSource.hidden = !file;
+  urlInput.disabled = file;
+  urlInput.required = !file;
+  fileInput.required = file;
+}
+
+function uploadLabels() {
+  return uploadTypes.map(([, label]) => label);
+}
+
+function uploadTypeList() {
+  return "Allowed: " + uploadLabels().join(", ") + ".";
+}
+
+function uploadTypeMessage() {
+  const labels = uploadLabels();
+  const last = labels[labels.length - 1];
+  return "Use a " + labels.slice(0, -1).join(", ") + ", or " + last + " file.";
+}
+
+function allowedUpload(name) {
+  const lower = String(name || "").toLowerCase();
+  return uploadTypes.some(([ext]) => lower.endsWith("." + ext));
+}
+
+function noteFile(file) {
+  if (file && !allowedUpload(file.name)) {
+    showFileError(uploadTypeMessage());
+    return;
+  }
+  clearFileError();
+}
+
+function showFileError(text) {
+  fileError.hidden = false;
+  fileError.textContent = text;
+}
+
+function clearFileError() {
+  fileError.hidden = true;
+  fileError.textContent = "";
+}
+
+function jsonRequest(body) {
+  return {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  };
+}
+
+function fileRequest(file, body) {
+  const data = new FormData();
+  data.append("file", file);
+  data.append("mode", body.mode);
+  data.append("format", body.format);
+  if (body.mode === "instrumental") {
+    data.append("submix", body.submix ? "true" : "false");
+    if (Array.isArray(body.stems)) {
+      for (const stem of body.stems) {
+        data.append("stems", stem);
+      }
+    }
+  }
+  return { method: "POST", body: data };
 }
 
 async function readJson(response) {

@@ -23,7 +23,10 @@ body {
     radial-gradient(ellipse at top, var(--bg-glow) 0%, transparent 58%),
     var(--bg);
   color: var(--ink);
-  font: 17px/1.5 "Avenir Next", "Segoe UI", sans-serif;
+  font:
+    17px/1.5 "Avenir Next",
+    "Segoe UI",
+    sans-serif;
 }
 
 main {
@@ -76,6 +79,7 @@ form,
 }
 
 input[type="url"],
+input[type="file"],
 select {
   width: 100%;
   padding: 0.75rem 0.8rem;
@@ -86,8 +90,59 @@ select {
   font: inherit;
 }
 
+select {
+  padding-right: calc(0.8rem + 1rem);
+  background-color: #12110f;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 17 10'%3E%3Cpath d='M1 1.2 L8.5 8.2 L16 1.2' fill='none' stroke='%23f6f1e8' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1.3rem center;
+  background-size: 8.5px 5px;
+  background-origin: border-box;
+  appearance: none;
+}
+
 .format {
   margin-top: 1rem;
+}
+
+#link-source,
+#file-source {
+  margin-top: 1rem;
+}
+
+#link-source[hidden],
+#file-source[hidden] {
+  display: none;
+}
+
+input[type="file"]::file-selector-button {
+  margin-right: 0.8rem;
+  padding: 0.35rem 0.7rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.types,
+.file-error {
+  margin: 0.45rem 0 0;
+  font-size: 0.88rem;
+}
+
+.types {
+  color: var(--muted);
+}
+
+.file-error {
+  color: var(--danger);
+}
+
+form > fieldset:first-child {
+  margin-top: 0;
 }
 
 fieldset {
@@ -250,7 +305,11 @@ select:focus-visible,
   border-radius: 0.75rem;
   background: #12110f;
   color: var(--muted);
-  font: 0.82rem/1.45 ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font:
+    0.82rem/1.45 ui-monospace,
+    "SFMono-Regular",
+    Menlo,
+    monospace;
   white-space: pre-wrap;
 }
 

@@ -12,7 +12,20 @@
         <h1>Cloud Chaser</h1>
       </header>
       <form id="form">
-        <label class="field">
+        <fieldset>
+          <legend>Source</legend>
+          <div class="modes">
+            <label class="mode">
+              <input type="radio" name="source" value="link" checked />
+              <span>Link</span>
+            </label>
+            <label class="mode">
+              <input type="radio" name="source" value="file" />
+              <span>File</span>
+            </label>
+          </div>
+        </fieldset>
+        <label class="field" id="link-source">
           <span>Track link</span>
           <input
             id="url"
@@ -24,6 +37,19 @@
             spellcheck="false"
           />
         </label>
+        <div id="file-source" hidden>
+          <label class="field">
+            <span>Audio file</span>
+            <input
+              id="file"
+              name="file"
+              type="file"
+              accept=".wav,.mp3,.m4a,.flac,.ogg,.opus,.aac,.mp4,.webm"
+            />
+          </label>
+          <p id="file-types" class="types"></p>
+          <p id="file-error" class="file-error" hidden></p>
+        </div>
         <fieldset>
           <legend>Download</legend>
           <div class="modes">

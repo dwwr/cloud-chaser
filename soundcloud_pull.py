@@ -24,6 +24,25 @@ class DownloadFailed(Exception):
     """Raised when yt-dlp cannot download or resolve a track."""
 
 
+UPLOAD_AUDIO = (
+    (".wav", "WAV"),
+    (".mp3", "MP3"),
+    (".m4a", "M4A"),
+    (".flac", "FLAC"),
+    (".ogg", "OGG"),
+    (".opus", "Opus"),
+    (".aac", "AAC"),
+    (".mp4", "MP4"),
+    (".webm", "WebM"),
+)
+
+
+def upload_type_error() -> str:
+    labels = [label for _suffix, label in UPLOAD_AUDIO]
+    listed = ", ".join(labels[:-1])
+    return f"Use a {listed}, or {labels[-1]} file."
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Download your SoundCloud or YouTube audio (profile, playlist, or single URL).",

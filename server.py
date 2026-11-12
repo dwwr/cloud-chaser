@@ -14,7 +14,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import quote, unquote, urlparse
 
-from soundcloud_pull import validate_source_url
+from soundcloud_pull import UPLOAD_AUDIO, upload_type_error, validate_source_url
 from make_instrumental import parse_stems, prepare_separation
 
 
@@ -22,17 +22,7 @@ ROOT = Path(__file__).resolve().parent
 WEB_ROOT = ROOT / "web"
 JOBS_ROOT = ROOT / "jobs"
 JOB_ID = re.compile(r"^[0-9a-f]{32}$")
-AUDIO_SUFFIXES = {
-    ".aac",
-    ".flac",
-    ".m4a",
-    ".mp3",
-    ".mp4",
-    ".ogg",
-    ".opus",
-    ".wav",
-    ".webm",
-}
+AUDIO_SUFFIXES = frozenset(suffix for suffix, _label in UPLOAD_AUDIO)
 AUDIO_TYPES = {
     ".aac": "audio/aac",
     ".flac": "audio/flac",
@@ -56,11 +46,12 @@ FORMATS = {
 }
 DEFAULT_FORMAT = {"track": "best", "instrumental": "wav"}
 LOG_LIMIT = 100_000
+MAX_UPLOAD = 512 * 1024 * 1024
 
 
 def command_for(
     mode: str,
-    url: str,
+    source: str,
     job_dir: Path,
     audio_format: str,
     stems: list[str] | None = None,
@@ -70,7 +61,7 @@ def command_for(
     python = sys.executable
     downloads = str(job_dir / "downloads")
     if mode == "track":
-        return [python, cli, "track", "-o", downloads, "--format", audio_format, "--", url]
+        return [python, cli, "track", "-o", downloads, "--format", audio_format, "--", source]
     instrumental = str(job_dir / "instrumentals")
     command = [
         python,
@@ -87,7 +78,7 @@ def command_for(
         command.extend(["--stems", stem])
     if submix:
         command.append("--submix")
-    command.extend(["--", url])
+    command.extend(["--", source])
     return command
 
 
@@ -98,7 +89,7 @@ def list_audio(directory: Path) -> list[Path]:
     for path in directory.rglob("*"):
         if not path.is_file():
             continue
-        if ".demucs-work" in path.parts:
+        if ".demucs-work" in path.parts or ".upload" in path.parts:
             continue
         if path.suffix.lower() not in AUDIO_SUFFIXES:
             continue
@@ -118,6 +109,97 @@ def file_payload(job_id: str, job_dir: Path, path: Path) -> dict[str, str]:
 def content_disposition(name: str) -> str:
     ascii_name = name.replace('"', "").encode("ascii", "ignore").decode() or "audio"
     return f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{quote(name)}"
+
+
+def safe_upload_name(filename: str) -> str:
+    base = Path(filename).name.replace("\x00", "")
+    suffix = Path(base).suffix.lower()
+    if suffix not in AUDIO_SUFFIXES:
+        raise ValueError(upload_type_error())
+    stem = re.sub(r"[^\w. -]+", "", Path(base).stem, flags=re.UNICODE).strip(" .")
+    if not stem:
+        stem = "audio"
+    return f"{stem}{suffix}"
+
+
+def boundary_token(content_type: str) -> bytes:
+    match = re.search(r"boundary=([^;]+)", content_type, re.IGNORECASE)
+    if not match:
+        raise ValueError("Expected a file upload.")
+    token = match.group(1).strip().strip('"')
+    if not token:
+        raise ValueError("Expected a file upload.")
+    return token.encode("latin-1", "replace")
+
+
+def header_param(disposition: str, key: str) -> str | None:
+    starred = re.search(
+        rf"(?:^|;)\s*{re.escape(key)}\*=([^;]+)",
+        disposition,
+        re.IGNORECASE,
+    )
+    if starred:
+        raw = starred.group(1).strip().strip('"')
+        if "''" in raw:
+            raw = raw.split("''", 1)[1]
+        return unquote(raw)
+    quoted = re.search(
+        rf'(?:^|;)\s*{re.escape(key)}="([^"]*)"',
+        disposition,
+        re.IGNORECASE,
+    )
+    if quoted:
+        return quoted.group(1)
+    plain = re.search(
+        rf"(?:^|;)\s*{re.escape(key)}=([^;]+)",
+        disposition,
+        re.IGNORECASE,
+    )
+    if plain:
+        return plain.group(1).strip().strip('"')
+    return None
+
+
+def parse_form(content_type: str, body: bytes) -> tuple[dict[str, list[str]], str, bytes]:
+    marker = b"--" + boundary_token(content_type)
+    fields: dict[str, list[str]] = {}
+    filename = ""
+    data = b""
+    saw_file = False
+    for chunk in body.split(marker):
+        if chunk.startswith(b"\r\n"):
+            chunk = chunk[2:]
+        if chunk.endswith(b"\r\n"):
+            chunk = chunk[:-2]
+        if chunk.endswith(b"--"):
+            chunk = chunk[:-2]
+        if not chunk:
+            continue
+        header_blob, sep, payload = chunk.partition(b"\r\n\r\n")
+        if not sep:
+            continue
+        disposition = ""
+        for line in header_blob.decode("utf-8", "replace").split("\r\n"):
+            if line.lower().startswith("content-disposition:"):
+                disposition = line.split(":", 1)[1].strip()
+        name = header_param(disposition, "name")
+        if not name:
+            continue
+        uploaded = header_param(disposition, "filename")
+        if name == "file" and uploaded is not None:
+            saw_file = True
+            filename = uploaded
+            data = payload
+            continue
+        fields.setdefault(name, []).append(payload.decode("utf-8", "replace"))
+    if not saw_file or not filename:
+        raise ValueError("Choose an audio file.")
+    return fields, filename, data
+
+
+def field_value(fields: dict[str, list[str]], name: str) -> str:
+    values = fields.get(name) or []
+    return values[-1] if values else ""
 
 
 def read_log(path: Path) -> str:
@@ -142,6 +224,7 @@ class JobStore:
         audio_format: str,
         stems: list[str] | None = None,
         submix: bool = False,
+        upload: tuple[str, bytes] | None = None,
     ) -> dict[str, object]:
         if mode not in MODES:
             raise ValueError("Mode must be track or instrumental.")
@@ -153,10 +236,26 @@ class JobStore:
             prepare_separation(chosen, submix=submix, model=None)
         elif stems or submix:
             raise ValueError("Stems are only available for an instrumental download.")
-        validate_source_url(url)
+        stored_name = ""
+        payload = b""
+        if upload is None:
+            validate_source_url(url)
+            source = url
+        else:
+            stored_name = safe_upload_name(upload[0])
+            payload = upload[1]
+            if not payload:
+                raise ValueError("That file is empty.")
+            source = ""
         job_id = uuid.uuid4().hex
         directory = self.root / job_id
         directory.mkdir(parents=True, exist_ok=False)
+        if upload is not None:
+            incoming = directory / ".upload"
+            incoming.mkdir()
+            path = incoming / stored_name
+            path.write_bytes(payload)
+            source = str(path)
         log_path = directory / "log.txt"
         log_path.touch()
         with self.lock:
@@ -167,7 +266,7 @@ class JobStore:
             }
         thread = threading.Thread(
             target=self.run,
-            args=(job_id, command_for(mode, url, directory, audio_format, chosen, submix), log_path),
+            args=(job_id, command_for(mode, source, directory, audio_format, chosen, submix), log_path),
             daemon=True,
         )
         thread.start()
@@ -245,7 +344,7 @@ class JobStore:
             inside = candidate.relative_to(job_dir)
         except ValueError:
             return None
-        if ".demucs-work" in inside.parts:
+        if ".demucs-work" in inside.parts or ".upload" in inside.parts:
             return None
         if not candidate.is_file():
             return None
@@ -301,6 +400,10 @@ class Handler(BaseHTTPRequestHandler):
         if parts != ["api", "jobs"]:
             self.send_json(404, {"error": "Not found."})
             return
+        content_type = self.headers.get("Content-Type", "")
+        if content_type.split(";", 1)[0].strip().lower() == "multipart/form-data":
+            self.route_upload(content_type)
+            return
         payload = self.read_json()
         if payload is None:
             return
@@ -334,6 +437,54 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(400, {"error": str(exc)})
             return
         self.send_json(202, snapshot)
+
+    def route_upload(self, content_type: str) -> None:
+        body = self.read_body(MAX_UPLOAD)
+        if body is None:
+            return
+        try:
+            fields, filename, data = parse_form(content_type, body)
+        except ValueError as exc:
+            self.send_json(400, {"error": str(exc)})
+            return
+        mode = field_value(fields, "mode")
+        audio_format = field_value(fields, "format") or DEFAULT_FORMAT.get(mode, "best")
+        if not isinstance(mode, str) or not mode:
+            self.send_json(400, {"error": "Mode must be track or instrumental."})
+            return
+        if not audio_format:
+            self.send_json(400, {"error": "Choose a file type."})
+            return
+        stems = fields.get("stems")
+        raw_submix = field_value(fields, "submix") or "false"
+        if raw_submix not in {"true", "false"}:
+            self.send_json(400, {"error": "Submix must be true or false."})
+            return
+        try:
+            snapshot = self.server.jobs.create(
+                "",
+                mode,
+                audio_format,
+                stems,
+                raw_submix == "true",
+                upload=(filename, data),
+            )
+        except ValueError as exc:
+            self.send_json(400, {"error": str(exc)})
+            return
+        self.send_json(202, snapshot)
+
+    def read_body(self, limit: int) -> bytes | None:
+        raw_length = self.headers.get("Content-Length", "")
+        try:
+            length = int(raw_length)
+        except ValueError:
+            self.send_json(400, {"error": "Expected a file upload."})
+            return None
+        if length < 0 or length > limit:
+            self.send_json(400, {"error": "That file is too large."})
+            return None
+        return self.rfile.read(length)
 
     def parts(self) -> list[str]:
         parsed = urlparse(self.path)
