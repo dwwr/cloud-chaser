@@ -8,10 +8,15 @@ const filesEl = document.querySelector("#files");
 const logEl = document.querySelector("#log");
 
 const formatSelect = document.querySelector("#format");
+const stemsPanel = document.querySelector("#stems");
+const presetSelect = document.querySelector("#preset");
+const stemList = document.querySelector("#stem-list");
+const submixInput = document.querySelector("#submix");
 
 const hints = {
   track: "Saves the audio file for that track.",
   instrumental: "Separates vocals locally. This can take several minutes.",
+  fine: "Separation takes several minutes. Guitar and piano are the less reliable pair.",
 };
 
 const formats = {
@@ -27,13 +32,50 @@ const formats = {
   ],
 };
 
+const stemNames = [
+  ["vocals", "Vocals"],
+  ["drums", "Drums"],
+  ["bass", "Bass"],
+  ["guitar", "Guitar"],
+  ["piano", "Piano"],
+  ["other", "Other"],
+];
+
+const presets = {
+  instrumental: ["drums", "bass", "guitar", "piano", "other"],
+  vocals: ["vocals"],
+  all: stemNames.map(([name]) => name),
+};
+
 let ticket = 0;
 
+for (const [name, label] of stemNames) {
+  const row = document.createElement("label");
+  row.className = "stem";
+  const input = document.createElement("input");
+  input.type = "checkbox";
+  input.name = "stem";
+  input.value = name;
+  const text = document.createElement("span");
+  text.textContent = label;
+  row.append(input, text);
+  stemList.append(row);
+}
+
+applyPreset("instrumental");
 renderFormats("track");
 
-form.addEventListener("change", () => {
+form.addEventListener("change", (event) => {
   const mode = String(new FormData(form).get("mode") || "track");
-  hint.textContent = hints[mode] || "";
+  const target = event.target;
+  if (target === presetSelect) {
+    applyPreset(presetSelect.value);
+  } else if (target && target.name === "stem") {
+    presetSelect.value = "custom";
+  }
+  syncSubmix();
+  syncStemPanel(mode);
+  hint.textContent = hintFor(mode);
   renderFormats(mode);
 });
 
@@ -42,6 +84,13 @@ form.addEventListener("submit", async (event) => {
   const mode = String(new FormData(form).get("mode") || "track");
   const audioFormat = String(new FormData(form).get("format") || "");
   const url = urlInput.value.trim();
+  const body = { url, mode, format: audioFormat };
+  if (mode === "instrumental") {
+    body.submix = submixInput.checked;
+    if (presetSelect.value !== "instrumental") {
+      body.stems = checkedStems();
+    }
+  }
   ticket += 1;
   const mine = ticket;
   result.hidden = false;
@@ -56,7 +105,7 @@ form.addEventListener("submit", async (event) => {
     const response = await fetch("/api/jobs", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url, mode, format: audioFormat }),
+      body: JSON.stringify(body),
     });
     const payload = await readJson(response);
     if (mine !== ticket) {
@@ -134,6 +183,46 @@ function finish(text, state) {
   setStatus(text, state);
   submitButton.disabled = false;
   submitButton.textContent = "Start";
+}
+
+function checkedStems() {
+  return [...stemList.querySelectorAll("input:checked")].map((input) => input.value);
+}
+
+function applyPreset(name) {
+  const selected = new Set(presets[name] || checkedStems());
+  if (!presets[name]) {
+    return;
+  }
+  for (const input of stemList.querySelectorAll("input")) {
+    input.checked = selected.has(input.value);
+  }
+}
+
+function syncSubmix() {
+  const lock = presetSelect.value !== "instrumental" && checkedStems().length === stemNames.length;
+  if (lock) {
+    submixInput.checked = false;
+  }
+  submixInput.disabled = lock;
+}
+
+function syncStemPanel(mode) {
+  stemsPanel.hidden = mode !== "instrumental";
+}
+
+function hintFor(mode) {
+  if (mode !== "instrumental") {
+    return hints.track;
+  }
+  const selected = checkedStems();
+  if (presetSelect.value === "all" || selected.includes("guitar") || selected.includes("piano")) {
+    if (presetSelect.value === "instrumental") {
+      return hints.instrumental;
+    }
+    return hints.fine;
+  }
+  return hints.instrumental;
 }
 
 function renderFormats(mode) {

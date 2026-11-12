@@ -1,50 +1,83 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Cloud Chaser</title>
-  <link rel="stylesheet" href="/style.css">
-</head>
-<body>
-  <main>
-    <header>
-      <p class="eyebrow">Local</p>
-      <h1>Cloud Chaser</h1>
-      <p class="lede">Paste a SoundCloud or YouTube link. Download the whole track, or an instrumental.</p>
-    </header>
-    <form id="form">
-      <label class="field">
-        <span>Track link</span>
-        <input id="url" name="url" type="url" required placeholder="https://youtu.be/… or a SoundCloud track link" autocomplete="off" spellcheck="false">
-      </label>
-      <fieldset>
-        <legend>Download</legend>
-        <div class="modes">
-          <label class="mode">
-            <input type="radio" name="mode" value="track" checked>
-            <span>Whole track</span>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cloud Chaser</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">Local</p>
+        <h1>Cloud Chaser</h1>
+        <p class="lede">
+          Paste a SoundCloud or YouTube link. Download the whole track or stems.
+        </p>
+      </header>
+      <form id="form">
+        <label class="field">
+          <span>Track link</span>
+          <input
+            id="url"
+            name="url"
+            type="url"
+            required
+            placeholder="https://youtu.be/… or a SoundCloud track link"
+            autocomplete="off"
+            spellcheck="false"
+          />
+        </label>
+        <fieldset>
+          <legend>Download</legend>
+          <div class="modes">
+            <label class="mode">
+              <input type="radio" name="mode" value="track" checked />
+              <span>Whole track</span>
+            </label>
+            <label class="mode">
+              <input type="radio" name="mode" value="instrumental" />
+              <span>Stems</span>
+            </label>
+          </div>
+        </fieldset>
+        <div id="stems" hidden>
+          <label class="field">
+            <span>Preset</span>
+            <select id="preset" name="preset">
+              <option value="instrumental" selected>Instrumental</option>
+              <option value="vocals">Vocals</option>
+              <option value="all">All stems</option>
+              <option value="custom">Custom</option>
+            </select>
           </label>
-          <label class="mode">
-            <input type="radio" name="mode" value="instrumental">
-            <span>Instrumental</span>
+          <fieldset>
+            <legend>Stems</legend>
+            <div id="stem-list" class="stem-list"></div>
+          </fieldset>
+          <label class="check">
+            <input id="submix" name="submix" type="checkbox" />
+            <span>Submix of the stems left out</span>
           </label>
         </div>
-      </fieldset>
-      <label class="field format">
-        <span>File type</span>
-        <select id="format" name="format"></select>
-      </label>
-      <p id="hint">Saves the audio file for that track.</p>
-      <button type="submit" id="submit">Start</button>
-    </form>
-    <p class="rights">Only use this for tracks you uploaded or otherwise have the right to download. SoundCloud and YouTube's terms restrict downloading other people's content without permission.</p>
-    <section id="result" hidden>
-      <p id="status"></p>
-      <ul id="files"></ul>
-      <pre id="log" hidden></pre>
-    </section>
-  </main>
-  <script src="/app.js"></script>
-</body>
+        <label class="field format">
+          <span>File type</span>
+          <select id="format" name="format"></select>
+        </label>
+        <p id="hint">Saves the audio file for that track.</p>
+        <button type="submit" id="submit">Start</button>
+      </form>
+      <p class="rights">
+        Only use this for tracks you uploaded or otherwise have the right to
+        download. SoundCloud and YouTube's terms restrict downloading other
+        people's content without permission.
+      </p>
+      <section id="result" hidden>
+        <p id="status"></p>
+        <ul id="files"></ul>
+        <pre id="log" hidden></pre>
+      </section>
+    </main>
+    <script src="/app.js"></script>
+  </body>
 </html>

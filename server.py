@@ -15,6 +15,7 @@ from pathlib import Path
 from urllib.parse import quote, unquote, urlparse
 
 from soundcloud_pull import validate_source_url
+from make_instrumental import parse_stems, prepare_separation
 
 
 ROOT = Path(__file__).resolve().parent
@@ -57,7 +58,14 @@ DEFAULT_FORMAT = {"track": "best", "instrumental": "wav"}
 LOG_LIMIT = 100_000
 
 
-def command_for(mode: str, url: str, job_dir: Path, audio_format: str) -> list[str]:
+def command_for(
+    mode: str,
+    url: str,
+    job_dir: Path,
+    audio_format: str,
+    stems: list[str] | None = None,
+    submix: bool = False,
+) -> list[str]:
     cli = str(ROOT / "cli.py")
     python = sys.executable
     downloads = str(job_dir / "downloads")
@@ -75,6 +83,10 @@ def command_for(mode: str, url: str, job_dir: Path, audio_format: str) -> list[s
     ]
     if audio_format == "mp3":
         command.append("--mp3")
+    for stem in stems or []:
+        command.extend(["--stems", stem])
+    if submix:
+        command.append("--submix")
     command.extend(["--", url])
     return command
 
@@ -123,11 +135,24 @@ class JobStore:
         self.lock = threading.Lock()
         self.jobs: dict[str, dict[str, object]] = {}
 
-    def create(self, url: str, mode: str, audio_format: str) -> dict[str, object]:
+    def create(
+        self,
+        url: str,
+        mode: str,
+        audio_format: str,
+        stems: list[str] | None = None,
+        submix: bool = False,
+    ) -> dict[str, object]:
         if mode not in MODES:
             raise ValueError("Mode must be track or instrumental.")
         if audio_format not in FORMATS[mode]:
             raise ValueError("That file type is not available for this download.")
+        chosen: list[str] | None = None
+        if mode == "instrumental":
+            chosen = parse_stems(stems)
+            prepare_separation(chosen, submix=submix, model=None)
+        elif stems or submix:
+            raise ValueError("Stems are only available for an instrumental download.")
         validate_source_url(url)
         job_id = uuid.uuid4().hex
         directory = self.root / job_id
@@ -142,7 +167,7 @@ class JobStore:
             }
         thread = threading.Thread(
             target=self.run,
-            args=(job_id, command_for(mode, url, directory, audio_format), log_path),
+            args=(job_id, command_for(mode, url, directory, audio_format, chosen, submix), log_path),
             daemon=True,
         )
         thread.start()
@@ -291,8 +316,20 @@ class Handler(BaseHTTPRequestHandler):
         if not isinstance(audio_format, str) or not audio_format:
             self.send_json(400, {"error": "Choose a file type."})
             return
+        raw_stems = payload.get("stems", None)
+        submix = payload.get("submix", False)
+        if raw_stems is None:
+            stems = None
+        elif not isinstance(raw_stems, list) or any(not isinstance(item, str) for item in raw_stems):
+            self.send_json(400, {"error": "Choose stems from the list."})
+            return
+        else:
+            stems = raw_stems
+        if not isinstance(submix, bool):
+            self.send_json(400, {"error": "Submix must be true or false."})
+            return
         try:
-            snapshot = self.server.jobs.create(url.strip(), mode, audio_format)
+            snapshot = self.server.jobs.create(url.strip(), mode, audio_format, stems, submix)
         except ValueError as exc:
             self.send_json(400, {"error": str(exc)})
             return
