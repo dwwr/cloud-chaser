@@ -9,11 +9,7 @@
   <body>
     <main>
       <header>
-        <p class="eyebrow">Local</p>
         <h1>Cloud Chaser</h1>
-        <p class="lede">
-          Paste a SoundCloud or YouTube link. Download the whole track or stems.
-        </p>
       </header>
       <form id="form">
         <label class="field">
@@ -23,7 +19,7 @@
             name="url"
             type="url"
             required
-            placeholder="https://youtu.be/… or a SoundCloud track link"
+            placeholder="Link"
             autocomplete="off"
             spellcheck="false"
           />
@@ -69,8 +65,8 @@
       </form>
       <p class="rights">
         Only use this for tracks you uploaded or otherwise have the right to
-        download. SoundCloud and YouTube's terms restrict downloading other
-        people's content without permission.
+        download. Not to be used for downloading other people's content without
+        permission.
       </p>
       <section id="result" hidden>
         <p id="status"></p>
