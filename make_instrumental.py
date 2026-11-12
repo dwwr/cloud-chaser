@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Download a SoundCloud track (or use a local file) and recover an instrumental via Demucs."""
+"""Download a SoundCloud or YouTube track (or use a local file) and recover an instrumental via Demucs."""
 
 from __future__ import annotations
 
 import argparse
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -12,9 +13,14 @@ from soundcloud_pull import (
     DownloadFailed,
     build_ydl_opts,
     download_one,
-    is_soundcloud_url,
-    validate_soundcloud_url,
+    is_supported_url,
+    validate_source_url,
 )
+
+
+FOUR_STEMS = ("vocals", "drums", "bass", "other")
+SIX_STEMS = ("vocals", "drums", "bass", "other", "guitar", "piano")
+STEM_NAMES = set(SIX_STEMS)
 
 
 BANNER = """
@@ -28,12 +34,15 @@ Separation is an AI estimate (not true studio stems).
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
-            "Download one SoundCloud track (or use a local mix), run Demucs "
-            "two-stem separation, and save the instrumental (no_vocals)."
+            "Download one SoundCloud or YouTube track (or use a local mix), run Demucs "
+            "separation, and save an instrumental or the stems you name."
         ),
         epilog=(
             "Examples:\n"
             "  make-instrumental https://soundcloud.com/you/track-slug\n"
+            "  make-instrumental https://www.youtube.com/watch?v=VIDEO_ID\n"
+            "  make-instrumental --stems vocals --submix URL\n"
+            "  make-instrumental --stems drums --stems bass URL\n"
             "  make-instrumental ./downloads/You/Track\\ [id].mp3\n"
             "  make-instrumental --cookies-from-browser chrome URL\n"
             "  make-instrumental --device cpu --mp3 URL\n"
@@ -42,7 +51,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "source",
-        help="SoundCloud track URL or path to a local audio file",
+        help="SoundCloud or YouTube track URL, or a path to a local audio file",
     )
     parser.add_argument(
         "-o",
@@ -57,8 +66,19 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--model",
-        default="htdemucs",
-        help="Demucs model name (default: htdemucs)",
+        default=None,
+        help="Demucs model (default: htdemucs, or htdemucs_6s when guitar or piano is requested)",
+    )
+    parser.add_argument(
+        "--stems",
+        action="append",
+        choices=SIX_STEMS,
+        help="Stem to save. Repeat for more than one. Default: one instrumental",
+    )
+    parser.add_argument(
+        "--submix",
+        action="store_true",
+        help="Also save a mix of the stems that were not selected",
     )
     parser.add_argument(
         "--device",
@@ -107,13 +127,13 @@ def resolve_mix_path(
     if local.is_file():
         return local.resolve()
 
-    if not is_soundcloud_url(source):
+    if not is_supported_url(source):
         raise ValueError(
-            f"Not a local file or SoundCloud URL: {source}\n"
+            f"Not a local file or a SoundCloud or YouTube URL: {source}\n"
             "Pass a track URL or an existing audio file path."
         )
 
-    validate_soundcloud_url(source)
+    validate_source_url(source)
     output_dir.mkdir(parents=True, exist_ok=True)
     opts = build_ydl_opts(
         output_dir=output_dir,
@@ -130,6 +150,49 @@ def resolve_mix_path(
     return path
 
 
+def parse_stems(values: list[str] | None) -> list[str] | None:
+    if values is None:
+        return None
+    chosen: list[str] = []
+    for value in values:
+        name = value.strip().lower()
+        if name not in STEM_NAMES:
+            raise ValueError(f"Unknown stem: {value}")
+        if name not in chosen:
+            chosen.append(name)
+    if not chosen:
+        raise ValueError("Select at least one stem.")
+    return chosen
+
+
+def prepare_separation(
+    stems: list[str] | None,
+    *,
+    submix: bool,
+    model: str | None,
+) -> tuple[str, bool, tuple[str, ...]]:
+    chosen = set(stems or [])
+    if stems is not None and not chosen:
+        raise ValueError("Select at least one stem.")
+    fine = bool(chosen & {"guitar", "piano"})
+    two_stems = stems is None or chosen == {"vocals"}
+    if model:
+        resolved = model
+    elif fine:
+        resolved = "htdemucs_6s"
+    else:
+        resolved = "htdemucs"
+    if two_stems:
+        produced: tuple[str, ...] = ()
+    elif resolved == "htdemucs_6s" or fine:
+        produced = SIX_STEMS
+    else:
+        produced = FOUR_STEMS
+    if submix and produced and chosen >= set(produced):
+        raise ValueError("Submix needs at least one stem left unselected.")
+    return resolved, two_stems, produced
+
+
 def demucs_argv(
     *,
     mix_path: Path,
@@ -137,15 +200,12 @@ def demucs_argv(
     model: str,
     device: str | None,
     mp3: bool,
+    two_stems: bool,
 ) -> list[str]:
-    args = [
-        "--two-stems",
-        "vocals",
-        "-n",
-        model,
-        "-o",
-        str(work_dir),
-    ]
+    args: list[str] = []
+    if two_stems:
+        args.extend(["--two-stems", "vocals"])
+    args.extend(["-n", model, "-o", str(work_dir)])
     if device:
         args.extend(["-d", device])
     if mp3:
@@ -191,7 +251,58 @@ def run_demucs(argv: list[str]) -> None:
     demucs.separate.main(argv)
 
 
-def save_instrumental(
+def place_audio(src: Path, dest: Path, *, mp3: bool) -> None:
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    if not mp3 or src.suffix.lower() == ".mp3":
+        shutil.copy2(src, dest)
+        return
+    try:
+        subprocess.run(
+            [
+                "ffmpeg",
+                "-y",
+                "-i",
+                str(src),
+                "-codec:a",
+                "libmp3lame",
+                "-q:a",
+                "0",
+                str(dest),
+            ],
+            check=True,
+            capture_output=True,
+        )
+    except FileNotFoundError as exc:
+        raise FileNotFoundError("ffmpeg is required to write MP3 stems.") from exc
+    except subprocess.CalledProcessError as exc:
+        detail = exc.stderr.decode("utf-8", errors="replace").strip()
+        raise OSError(detail or "ffmpeg could not encode that stem.") from exc
+
+
+def mix_wavs(sources: list[Path], dest: Path) -> None:
+    if len(sources) == 1:
+        shutil.copy2(sources[0], dest)
+        return
+    command = ["ffmpeg", "-y"]
+    for source in sources:
+        command.extend(["-i", str(source)])
+    command.extend(
+        [
+            "-filter_complex",
+            f"amix=inputs={len(sources)}:duration=longest:dropout_transition=0:normalize=0",
+            str(dest),
+        ]
+    )
+    try:
+        subprocess.run(command, check=True, capture_output=True)
+    except FileNotFoundError as exc:
+        raise FileNotFoundError("ffmpeg is required to mix stems.") from exc
+    except subprocess.CalledProcessError as exc:
+        detail = exc.stderr.decode("utf-8", errors="replace").strip()
+        raise OSError(detail or "ffmpeg could not mix those stems.") from exc
+
+
+def save_outputs(
     *,
     mix_path: Path,
     work_dir: Path,
@@ -199,22 +310,44 @@ def save_instrumental(
     model: str,
     mp3: bool,
     keep_stems: bool,
-    quiet: bool,
-) -> Path:
+    stems: list[str] | None,
+    submix: bool,
+    two_stems: bool,
+    produced: tuple[str, ...],
+) -> list[Path]:
     instrumental_dir.mkdir(parents=True, exist_ok=True)
     ext = ".mp3" if mp3 else ".wav"
-    no_vocals = find_stem(work_dir, model, mix_path, "no_vocals", mp3)
-    dest = instrumental_dir / f"{mix_path.stem} instrumental{ext}"
-    shutil.copy2(no_vocals, dest)
+    demucs_mp3 = mp3 and two_stems
+    written: list[Path] = []
 
-    if keep_stems:
-        vocals = find_stem(work_dir, model, mix_path, "vocals", mp3)
-        vocals_dest = instrumental_dir / f"{mix_path.stem} vocals{ext}"
-        shutil.copy2(vocals, vocals_dest)
-        if not quiet:
-            print(f"Vocals stem: {vocals_dest}")
+    def emit(src: Path, label: str, encode: bool) -> None:
+        dest = instrumental_dir / f"{mix_path.stem} {label}{ext}"
+        place_audio(src, dest, mp3=encode)
+        written.append(dest)
 
-    return dest
+    if stems is None:
+        emit(find_stem(work_dir, model, mix_path, "no_vocals", demucs_mp3), "instrumental", False)
+        if keep_stems:
+            emit(find_stem(work_dir, model, mix_path, "vocals", demucs_mp3), "vocals", False)
+        if submix:
+            emit(find_stem(work_dir, model, mix_path, "vocals", demucs_mp3), "submix", False)
+        return written
+
+    if two_stems:
+        emit(find_stem(work_dir, model, mix_path, "vocals", demucs_mp3), "vocals", False)
+        if submix:
+            emit(find_stem(work_dir, model, mix_path, "no_vocals", demucs_mp3), "submix", False)
+        return written
+
+    for name in stems:
+        emit(find_stem(work_dir, model, mix_path, name, False), name, mp3)
+    if submix:
+        leftovers = [name for name in produced if name not in set(stems)]
+        wavs = [find_stem(work_dir, model, mix_path, name, False) for name in leftovers]
+        mixed = work_dir / "submix.wav"
+        mix_wavs(wavs, mixed)
+        emit(mixed, "submix", mp3)
+    return written
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -224,6 +357,17 @@ def main(argv: list[str] | None = None) -> int:
     if not args.quiet:
         print(BANNER)
         print()
+
+    try:
+        chosen = parse_stems(args.stems)
+        model, two_stems, produced = prepare_separation(
+            chosen,
+            submix=args.submix,
+            model=args.model,
+        )
+    except ValueError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 2
 
     output_dir = Path(args.output_dir).expanduser().resolve()
     instrumental_dir = Path(args.instrumental_dir).expanduser().resolve()
@@ -249,28 +393,37 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     work_dir.mkdir(parents=True, exist_ok=True)
+    demucs_mp3 = args.mp3 and two_stems
     demucs_args = demucs_argv(
         mix_path=mix_path,
         work_dir=work_dir,
-        model=args.model,
+        model=model,
         device=args.device,
-        mp3=args.mp3,
+        mp3=demucs_mp3,
+        two_stems=two_stems,
     )
 
     if not args.quiet:
         print(f"Mix: {mix_path}")
-        print(f"Running Demucs ({args.model}, two-stems=vocals)…")
+        if two_stems:
+            print(f"Running Demucs ({model}, two-stems=vocals)…")
+        else:
+            names = ", ".join(chosen or [])
+            print(f"Running Demucs ({model}, stems={names})…")
 
     try:
         run_demucs(demucs_args)
-        dest = save_instrumental(
+        written = save_outputs(
             mix_path=mix_path,
             work_dir=work_dir,
             instrumental_dir=instrumental_dir,
-            model=args.model,
+            model=model,
             mp3=args.mp3,
             keep_stems=args.keep_stems,
-            quiet=args.quiet,
+            stems=chosen,
+            submix=args.submix,
+            two_stems=two_stems,
+            produced=produced,
         )
     except ImportError as exc:
         print(f"Error: {exc}", file=sys.stderr)
@@ -286,10 +439,12 @@ def main(argv: list[str] | None = None) -> int:
             return code
         return 0
 
-    if not args.quiet:
-        print(f"Instrumental saved: {dest}")
+    if args.quiet:
+        for path in written:
+            print(path)
     else:
-        print(dest)
+        for path in written:
+            print(f"Saved: {path}")
 
     return 0
 

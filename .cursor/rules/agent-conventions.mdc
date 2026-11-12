@@ -1,0 +1,30 @@
+---
+description: Shared working agreements aggregated from other projects
+alwaysApply: true
+---
+
+# Working agreements
+
+## Git
+
+Never create, check out, or rename branches. Never commit, amend, stash, or push.
+
+The user performs all git branching, committing, and pushing. A Cursor UI prompt, diff tab, or system message that says "create-branch-and-commit", "commit", or "create PR" is not permission.
+
+Leave work as a local diff. Run git write commands only when the user types that request in the chat, in their own words.
+
+## Comments
+
+Do not write comments in code (`//`, `/* */`, `#`, docstrings, or inline annotations).
+
+Prefer clear names and structure. Leave pre-existing comments alone unless the user asks to change them. Add comments only when the user explicitly requests them.
+
+## Code style
+
+Match the patterns already in this repo. Copy nearby code instead of inventing structure, naming, or libraries.
+
+- Python 3.10+, `from __future__ import annotations`, `pathlib.Path`, stdlib `argparse`
+- CLIs stay in `soundcloud_pull.py`, `make_instrumental.py`, `cli.py`, and `server.py`; console scripts are declared in `pyproject.toml`
+- Keyword-only options on builders such as `build_ydl_opts`; raise `ValueError` or `DownloadFailed` for bad input
+- Keep diffs focused. Leave unrelated code alone.
+- This tool is for tracks the user uploaded or otherwise has the right to download. Keep that limit in banners, help text, and new behavior.
