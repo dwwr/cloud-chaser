@@ -12,7 +12,7 @@ from soundcloud_pull import (
     DownloadFailed,
     build_ydl_opts,
     download_one,
-    validate_soundcloud_url,
+    validate_source_url,
 )
 
 
@@ -30,27 +30,28 @@ Run cloud-chaser <command> --help for that command's flags.
 
 
 TRACK_BANNER = """
-cloud-chaser track — download one SoundCloud track
+cloud-chaser track — download one SoundCloud or YouTube track
 
 Only use this for tracks you uploaded or otherwise have the right to download.
-SoundCloud's terms restrict downloading other people's content without permission.
+SoundCloud and YouTube's terms restrict downloading other people's content without permission.
 """.strip()
 
 
 def build_track_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="cloud-chaser track",
-        description="Download one SoundCloud track.",
+        description="Download one SoundCloud or YouTube track.",
         epilog=(
             "Examples:\n"
             "  cloud-chaser track https://soundcloud.com/you/track-slug\n"
+            "  cloud-chaser track https://youtu.be/VIDEO_ID\n"
             "  cloud-chaser track -o ./recovered --format mp3 URL\n"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
         "url",
-        help="SoundCloud track URL",
+        help="SoundCloud or YouTube track URL",
     )
     parser.add_argument(
         "-o",
@@ -92,7 +93,7 @@ def track_main(argv: list[str] | None = None) -> int:
         print()
 
     try:
-        validate_soundcloud_url(args.url)
+        validate_source_url(args.url)
         output_dir = Path(args.output_dir).expanduser().resolve()
         output_dir.mkdir(parents=True, exist_ok=True)
         opts = build_ydl_opts(

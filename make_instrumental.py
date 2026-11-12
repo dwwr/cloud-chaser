@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Download a SoundCloud track (or use a local file) and recover an instrumental via Demucs."""
+"""Download a SoundCloud or YouTube track (or use a local file) and recover an instrumental via Demucs."""
 
 from __future__ import annotations
 
@@ -12,8 +12,8 @@ from soundcloud_pull import (
     DownloadFailed,
     build_ydl_opts,
     download_one,
-    is_soundcloud_url,
-    validate_soundcloud_url,
+    is_supported_url,
+    validate_source_url,
 )
 
 
@@ -28,12 +28,13 @@ Separation is an AI estimate (not true studio stems).
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
-            "Download one SoundCloud track (or use a local mix), run Demucs "
+            "Download one SoundCloud or YouTube track (or use a local mix), run Demucs "
             "two-stem separation, and save the instrumental (no_vocals)."
         ),
         epilog=(
             "Examples:\n"
             "  make-instrumental https://soundcloud.com/you/track-slug\n"
+            "  make-instrumental https://www.youtube.com/watch?v=VIDEO_ID\n"
             "  make-instrumental ./downloads/You/Track\\ [id].mp3\n"
             "  make-instrumental --cookies-from-browser chrome URL\n"
             "  make-instrumental --device cpu --mp3 URL\n"
@@ -42,7 +43,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "source",
-        help="SoundCloud track URL or path to a local audio file",
+        help="SoundCloud or YouTube track URL, or a path to a local audio file",
     )
     parser.add_argument(
         "-o",
@@ -107,13 +108,13 @@ def resolve_mix_path(
     if local.is_file():
         return local.resolve()
 
-    if not is_soundcloud_url(source):
+    if not is_supported_url(source):
         raise ValueError(
-            f"Not a local file or SoundCloud URL: {source}\n"
+            f"Not a local file or a SoundCloud or YouTube URL: {source}\n"
             "Pass a track URL or an existing audio file path."
         )
 
-    validate_soundcloud_url(source)
+    validate_source_url(source)
     output_dir.mkdir(parents=True, exist_ok=True)
     opts = build_ydl_opts(
         output_dir=output_dir,

@@ -14,7 +14,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import quote, unquote, urlparse
 
-from soundcloud_pull import validate_soundcloud_url
+from soundcloud_pull import validate_source_url
 
 
 ROOT = Path(__file__).resolve().parent
@@ -119,7 +119,7 @@ class JobStore:
     def create(self, url: str, mode: str) -> dict[str, object]:
         if mode not in MODES:
             raise ValueError("Mode must be track or instrumental.")
-        validate_soundcloud_url(url)
+        validate_source_url(url)
         job_id = uuid.uuid4().hex
         directory = self.root / job_id
         directory.mkdir(parents=True, exist_ok=False)

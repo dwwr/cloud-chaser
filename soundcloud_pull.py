@@ -1,21 +1,22 @@
 #!/usr/bin/env python3
-"""Pull audio from SoundCloud for tracks you own or have rights to download."""
+"""Pull audio from SoundCloud or YouTube for tracks you own or have rights to download."""
 
 from __future__ import annotations
 
 import argparse
 import sys
 from pathlib import Path
+from urllib.parse import urlparse
 
 from yt_dlp import YoutubeDL
 from yt_dlp.utils import DownloadError
 
 
 BANNER = """
-soundcloud-pull — recover audio from your SoundCloud uploads
+soundcloud-pull — recover audio from your SoundCloud or YouTube uploads
 
 Only use this for tracks you uploaded or otherwise have the right to download.
-SoundCloud's terms restrict downloading other people's content without permission.
+SoundCloud and YouTube's terms restrict downloading other people's content without permission.
 """.strip()
 
 
@@ -25,11 +26,12 @@ class DownloadFailed(Exception):
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Download your SoundCloud tracks (profile or single track URL).",
+        description="Download your SoundCloud or YouTube audio (profile, playlist, or single URL).",
         epilog=(
             "Examples:\n"
             "  soundcloud-pull https://soundcloud.com/your-username\n"
             "  soundcloud-pull https://soundcloud.com/your-username/track-name\n"
+            "  soundcloud-pull https://www.youtube.com/watch?v=VIDEO_ID\n"
             "  soundcloud-pull -o ./recovered https://soundcloud.com/your-username\n"
             "  soundcloud-pull --cookies cookies.txt https://soundcloud.com/you/private-track\n"
         ),
@@ -37,7 +39,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "url",
-        help="SoundCloud profile URL, likes URL, playlist URL, or single track URL",
+        help="SoundCloud or YouTube profile, playlist, or single track URL",
     )
     parser.add_argument(
         "-o",
@@ -153,17 +155,34 @@ def build_ydl_opts(
     return opts
 
 
-def validate_soundcloud_url(url: str) -> None:
-    lowered = url.strip().lower()
-    if "soundcloud.com" not in lowered and "on.soundcloud.com" not in lowered:
+def source_host(value: str) -> str:
+    text = value.strip()
+    if "://" not in text:
+        text = "https://" + text
+    host = (urlparse(text).hostname or "").lower()
+    if host.startswith("www."):
+        host = host[4:]
+    return host
+
+
+def is_supported_url(value: str) -> bool:
+    host = source_host(value)
+    if host in {"youtu.be", "on.soundcloud.com"}:
+        return True
+    return (
+        host == "soundcloud.com"
+        or host.endswith(".soundcloud.com")
+        or host == "youtube.com"
+        or host.endswith(".youtube.com")
+    )
+
+
+def validate_source_url(url: str) -> None:
+    if not is_supported_url(url):
         raise ValueError(
-            "URL does not look like SoundCloud. Pass a soundcloud.com profile or track link."
+            "URL does not look like SoundCloud or YouTube. "
+            "Pass a soundcloud.com, youtube.com, or youtu.be link."
         )
-
-
-def is_soundcloud_url(value: str) -> bool:
-    lowered = value.strip().lower()
-    return "soundcloud.com" in lowered or "on.soundcloud.com" in lowered
 
 
 def resolve_downloaded_path(ydl: YoutubeDL, info: dict) -> Path:
@@ -188,7 +207,7 @@ def resolve_downloaded_path(ydl: YoutubeDL, info: dict) -> Path:
 
 
 def download_one(url: str, opts: dict) -> Path:
-    """Download a single SoundCloud track and return its file path.
+    """Download a single track and return its file path.
 
     Raises DownloadFailed on network/extract errors, ValueError for playlists/profiles.
     """
@@ -212,8 +231,8 @@ def download_one(url: str, opts: dict) -> Path:
                 raise DownloadFailed("Nothing found at that URL.")
             if len(items) > 1:
                 raise ValueError(
-                    "Expected a single track URL, but got a profile/playlist. "
-                    "Pass one track link (…/artist/track-slug)."
+                    "Expected a single track URL, but got a profile or playlist. "
+                    "Pass one track or video link."
                 )
             info = items[0]
             if not single_opts.get("simulate"):
@@ -278,7 +297,7 @@ def main(argv: list[str] | None = None) -> int:
         print()
 
     try:
-        validate_soundcloud_url(args.url)
+        validate_source_url(args.url)
         output_dir = Path(args.output_dir).expanduser().resolve()
         if not args.dry_run:
             output_dir.mkdir(parents=True, exist_ok=True)

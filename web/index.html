@@ -11,12 +11,12 @@
     <header>
       <p class="eyebrow">Local</p>
       <h1>Cloud Chaser</h1>
-      <p class="lede">Paste a SoundCloud track link. Download the whole track, or an instrumental.</p>
+      <p class="lede">Paste a SoundCloud or YouTube link. Download the whole track, or an instrumental.</p>
     </header>
     <form id="form">
       <label class="field">
         <span>Track link</span>
-        <input id="url" name="url" type="url" required placeholder="https://soundcloud.com/artist/track" autocomplete="off" spellcheck="false">
+        <input id="url" name="url" type="url" required placeholder="https://youtu.be/… or a SoundCloud track link" autocomplete="off" spellcheck="false">
       </label>
       <fieldset>
         <legend>Download</legend>
@@ -34,7 +34,7 @@
       <p id="hint">Saves the audio file for that track.</p>
       <button type="submit" id="submit">Start</button>
     </form>
-    <p class="rights">Only use this for tracks you uploaded or otherwise have the right to download. SoundCloud's terms restrict downloading other people's content without permission.</p>
+    <p class="rights">Only use this for tracks you uploaded or otherwise have the right to download. SoundCloud and YouTube's terms restrict downloading other people's content without permission.</p>
     <section id="result" hidden>
       <p id="status"></p>
       <ul id="files"></ul>
