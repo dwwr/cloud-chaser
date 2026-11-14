@@ -1,6 +1,13 @@
 # soundcloud-pull
 
 ```bash
+cd frontend
+npm run dev:all
+```
+
+Starts the Python server at http://127.0.0.1:8765 and the Next.js app at http://127.0.0.1:3000.
+
+```bash
 python cli.py run
 ```
 
