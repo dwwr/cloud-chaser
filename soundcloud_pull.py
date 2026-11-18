@@ -68,7 +68,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--format",
-        choices=("best", "mp3", "m4a", "opus"),
+        choices=("best", "wav", "mp3", "m4a", "opus"),
         default="best",
         help="Preferred audio format (default: best available)",
     )
@@ -278,7 +278,7 @@ def download(url: str, opts: dict) -> int:
                 "\nTips:\n"
                 "  • Confirm the URL opens in your browser while logged in.\n"
                 "  • For private tracks, export cookies and pass --cookies.\n"
-                "  • Install ffmpeg if you requested --format mp3/m4a/opus.",
+                "  • Install ffmpeg if you requested --format wav/mp3/m4a/opus.",
                 file=sys.stderr,
             )
             return 1

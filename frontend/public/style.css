@@ -61,8 +61,7 @@ h1 {
 }
 
 .lede,
-.rights,
-#hint {
+.rights {
   color: var(--muted);
 }
 
@@ -229,6 +228,15 @@ legend {
   cursor: pointer;
 }
 
+.mode:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.mode:has(input:disabled) input {
+  cursor: not-allowed;
+}
+
 .mode::after {
   content: "";
   position: absolute;
@@ -253,6 +261,7 @@ legend {
 #hint {
   min-height: 1.5em;
   margin: 0.85rem 0 0;
+  color: var(--ok);
   font-size: 0.92rem;
 }
 

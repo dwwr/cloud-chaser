@@ -78,7 +78,7 @@ export default function Page() {
           </fieldset>
           <label className="check">
             <input id="submix" name="submix" type="checkbox" />
-            <span>Submix of the stems left out</span>
+            <span>Include submix</span>
           </label>
         </div>
         <label className="field format">
@@ -87,6 +87,7 @@ export default function Page() {
             <select id="format" name="format"></select>
           </span>
         </label>
+        <p id="hint">WAV, MP3, M4A, Opus, or Best available</p>
         <span className="control">
           <button type="submit" id="submit">
             Start

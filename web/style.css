@@ -183,6 +183,15 @@ legend {
   accent-color: var(--accent);
 }
 
+.mode:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.mode input:disabled {
+  cursor: not-allowed;
+}
+
 #hint {
   min-height: 1.5em;
   margin: 0.85rem 0 0;
