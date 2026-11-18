@@ -101,7 +101,9 @@ form.addEventListener("change", (event) => {
   if (target === fileInput) {
     noteFile(fileInput.files && fileInput.files[0]);
   }
-  hint.textContent = hintFor(mode);
+  if (hint) {
+    hint.textContent = hintFor(mode);
+  }
   renderFormats(mode);
 });
 
@@ -141,7 +143,10 @@ form.addEventListener("submit", async (event) => {
   submitButton.textContent = "Working…";
 
   try {
-    const response = await fetch("/api/jobs", fromFile ? fileRequest(file, body) : jsonRequest(body));
+    const response = await fetch(
+      "/api/jobs",
+      fromFile ? fileRequest(file, body) : jsonRequest(body),
+    );
     const payload = await readJson(response);
     if (mine !== ticket) {
       return;
@@ -221,7 +226,9 @@ function finish(text, state) {
 }
 
 function checkedStems() {
-  return [...stemList.querySelectorAll("input:checked")].map((input) => input.value);
+  return [...stemList.querySelectorAll("input:checked")].map(
+    (input) => input.value,
+  );
 }
 
 function applyPreset(name) {
@@ -250,7 +257,9 @@ function syncPresetExtras() {
 }
 
 function syncSubmix() {
-  const lock = presetSelect.value !== "instrumental" && checkedStems().length === stemNames.length;
+  const lock =
+    presetSelect.value !== "instrumental" &&
+    checkedStems().length === stemNames.length;
   if (lock) {
     submixInput.checked = false;
   }
@@ -272,7 +281,11 @@ function hintFor(mode) {
   if (presetSelect.value === "instrumental") {
     return "Saves one instrumental file with the vocals removed. This can take several minutes.";
   }
-  if (presetSelect.value === "all" || selected.includes("guitar") || selected.includes("piano")) {
+  if (
+    presetSelect.value === "all" ||
+    selected.includes("guitar") ||
+    selected.includes("piano")
+  ) {
     return hints.fine;
   }
   return hints.instrumental;

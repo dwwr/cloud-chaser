@@ -78,6 +78,12 @@ form,
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: 1rem;
+  display: flex;
+  flex-direction: column;
+}
+
+#result[hidden] {
+  display: none;
 }
 
 .field {
@@ -107,7 +113,6 @@ select {
 
 select {
   padding-right: calc(0.8rem + 1rem);
-  /* background-color: #12110f; */
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 17 10'%3E%3Cpath d='M1 1.2 L8.5 8.2 L16 1.2' fill='none' stroke='%23f6f1e8' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 1.3rem center;
@@ -148,7 +153,7 @@ input[type="file"]::file-selector-button {
 }
 
 .types {
-  color: var(--muted);
+  color: var(--ok);
 }
 
 .file-error {
@@ -165,9 +170,16 @@ fieldset {
   border: 0;
 }
 
+legend,
+.field > span:not(.control) {
+  color: var(--ok);
+  font-style: italic;
+  font-weight: 600;
+  font-size: 1.15rem;
+}
+
 legend {
   margin-bottom: 0.45rem;
-  font-size: 0.92rem;
 }
 
 .modes {
@@ -183,7 +195,7 @@ legend {
   transform: skewX(var(--field-slant));
 }
 
-.mode > *,
+.mode > :not(input),
 .stem > *,
 .check > *,
 .control > input,
@@ -193,9 +205,10 @@ legend {
 }
 
 .mode {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 0.55rem;
+  overflow: hidden;
   min-height: 3rem;
   padding: 0.75rem 0.85rem;
   border: 1px solid var(--line);
@@ -205,11 +218,36 @@ legend {
 }
 
 .mode:has(input:checked) {
-  border-color: var(--accent);
+  border-color: var(--line);
 }
 
 .mode input {
-  accent-color: var(--accent);
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.mode::after {
+  content: "";
+  position: absolute;
+  top: -0.75rem;
+  right: -0.75rem;
+  bottom: -0.75rem;
+  width: calc(20% + 0.75rem);
+  background: radial-gradient(
+    140% 150% at right center,
+    var(--line) 0 30%,
+    transparent 64%
+  );
+  filter: blur(6px);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.mode:has(input:checked)::after {
+  opacity: 1;
 }
 
 #hint {
@@ -219,9 +257,12 @@ legend {
 }
 
 .control:has(> button) {
-  margin-top: 1rem;
+  margin-top: 2rem;
   border: 0;
   border-radius: 0.75rem;
+  display: flex;
+  width: 50%;
+  align-self: flex-end;
 }
 
 button {
@@ -253,7 +294,8 @@ button:disabled {
   outline-offset: 2px;
 }
 
-.control :focus-visible {
+.control :focus-visible,
+.mode input:focus-visible {
   outline: none;
 }
 
@@ -347,7 +389,7 @@ button:disabled {
   padding: 0.8rem;
   overflow: auto;
   border-radius: 0.75rem;
-  color: var(--muted);
+  color: var(--ok);
   font:
     0.82rem/1.45 ui-monospace,
     "SFMono-Regular",

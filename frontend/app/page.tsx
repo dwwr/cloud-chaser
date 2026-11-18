@@ -87,7 +87,6 @@ export default function Page() {
             <select id="format" name="format"></select>
           </span>
         </label>
-        <p id="hint">Saves the audio file for that track.</p>
         <span className="control">
           <button type="submit" id="submit">
             Start
@@ -96,8 +95,8 @@ export default function Page() {
       </form>
       <p className="rights">
         Only use this for tracks you uploaded or otherwise have the right to
-        download. Not to be used for downloading other people&apos;s content without
-        permission.
+        download. Not to be used for downloading other people&apos;s content
+        without permission.
       </p>
       <section id="result" hidden>
         <p id="status"></p>
