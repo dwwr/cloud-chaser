@@ -258,6 +258,46 @@ legend {
   opacity: 1;
 }
 
+.stem,
+.check {
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  justify-content: flex-end;
+}
+
+.stem input,
+.check input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.stem::after,
+.check::after {
+  content: "";
+  position: absolute;
+  top: -0.75rem;
+  left: -0.75rem;
+  bottom: -0.75rem;
+  width: calc(20% + 0.75rem);
+  background: radial-gradient(
+    140% 150% at left center,
+    var(--line) 0 30%,
+    transparent 64%
+  );
+  filter: blur(6px);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.stem:has(input:checked)::after,
+.check:has(input:checked)::after {
+  opacity: 1;
+}
+
 #hint {
   min-height: 1.5em;
   margin: 0.85rem 0 0;
@@ -304,7 +344,9 @@ button:disabled {
 }
 
 .control :focus-visible,
-.mode input:focus-visible {
+.mode input:focus-visible,
+.stem input:focus-visible,
+.check input:focus-visible {
   outline: none;
 }
 
@@ -387,10 +429,6 @@ button:disabled {
   margin-top: 0.7rem;
 }
 
-.stem input,
-.check input {
-  accent-color: var(--accent);
-}
 
 #log {
   max-height: 16rem;
