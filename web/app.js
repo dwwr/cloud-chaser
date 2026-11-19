@@ -20,8 +20,8 @@ const fileError = document.querySelector("#file-error");
 
 const hints = {
   track: "Saves the audio file for that track.",
-  instrumental: "Separates vocals locally. This can take several minutes.",
-  fine: "Separation takes several minutes. Guitar and piano are the less reliable pair.",
+  instrumental: "Instrumental, no vocals.",
+  fine: "Separation takes several minutes.",
 };
 
 const formats = {
@@ -144,7 +144,10 @@ form.addEventListener("submit", async (event) => {
   submitButton.textContent = "Working…";
 
   try {
-    const response = await fetch("/api/jobs", fromFile ? fileRequest(file, body) : jsonRequest(body));
+    const response = await fetch(
+      "/api/jobs",
+      fromFile ? fileRequest(file, body) : jsonRequest(body),
+    );
     const payload = await readJson(response);
     if (mine !== ticket) {
       return;
@@ -224,7 +227,9 @@ function finish(text, state) {
 }
 
 function checkedStems() {
-  return [...stemList.querySelectorAll("input:checked")].map((input) => input.value);
+  return [...stemList.querySelectorAll("input:checked")].map(
+    (input) => input.value,
+  );
 }
 
 function applyPreset(name) {
@@ -253,7 +258,9 @@ function syncPresetExtras() {
 }
 
 function syncSubmix() {
-  const lock = presetSelect.value !== "instrumental" && checkedStems().length === stemNames.length;
+  const lock =
+    presetSelect.value !== "instrumental" &&
+    checkedStems().length === stemNames.length;
   if (lock) {
     submixInput.checked = false;
   }
@@ -265,15 +272,19 @@ function syncStemPanel(mode) {
 }
 
 function hintFor(mode) {
-  const outputs = "Valid outputs: " + outputList(mode) + ".";
+  const outputs = outputList(mode) + ".";
   if (mode !== "instrumental") {
     return hints.track + " " + outputs;
   }
   const selected = checkedStems();
   if (presetSelect.value === "instrumental") {
-    return "Saves one instrumental file with the vocals removed. " + outputs + " This can take several minutes.";
+    return "Saves one instrumental file with the vocals removed. " + outputs;
   }
-  if (presetSelect.value === "all" || selected.includes("guitar") || selected.includes("piano")) {
+  if (
+    presetSelect.value === "all" ||
+    selected.includes("guitar") ||
+    selected.includes("piano")
+  ) {
     return hints.fine + " " + outputs;
   }
   return hints.instrumental + " " + outputs;
@@ -320,7 +331,9 @@ function syncSource() {
   }
   trackMode.disabled = file;
   if (file && trackMode.checked) {
-    const stemsMode = form.querySelector('input[name="mode"][value="instrumental"]');
+    const stemsMode = form.querySelector(
+      'input[name="mode"][value="instrumental"]',
+    );
     if (stemsMode) {
       stemsMode.checked = true;
     }

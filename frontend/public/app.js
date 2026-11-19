@@ -18,12 +18,6 @@ const fileSource = document.querySelector("#file-source");
 const fileTypes = document.querySelector("#file-types");
 const fileError = document.querySelector("#file-error");
 
-const hints = {
-  track: "",
-  instrumental: "Separates vocals locally. This can take several minutes.",
-  fine: "Separation takes several minutes. Guitar and piano are the less reliable pair.",
-};
-
 const formats = {
   track: [
     ["best", "Best available"],
@@ -272,28 +266,20 @@ function syncStemPanel(mode) {
 }
 
 function hintFor(mode) {
-  const outputs = "Valid outputs: " + outputList(mode) + ".";
-  if (mode !== "instrumental") {
-    return hints.track + " " + outputs;
+  const outputs = outputList(mode) + ".";
+  if (mode === "instrumental") {
+    return outputs + " This may take several minutes.";
   }
-  const selected = checkedStems();
-  if (presetSelect.value === "instrumental") {
-    return hints.track + " " + outputs + " This can take several minutes.";
-  }
-  if (
-    presetSelect.value === "all" ||
-    selected.includes("guitar") ||
-    selected.includes("piano")
-  ) {
-    return hints.fine + " " + outputs;
-  }
-  return hints.instrumental + " " + outputs;
+  return outputs;
 }
 
 function outputList(mode) {
   const labels = (formats[mode] || formats.track).map(([, label]) => label);
   if (labels.length < 2) {
     return labels.join(", ");
+  }
+  if (labels.length === 2) {
+    return labels[0] + " or " + labels[1];
   }
   const last = labels[labels.length - 1];
   return labels.slice(0, -1).join(", ") + ", or " + last;

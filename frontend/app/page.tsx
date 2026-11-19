@@ -87,7 +87,7 @@ export default function Page() {
             <select id="format" name="format"></select>
           </span>
         </label>
-        <p id="hint">WAV, MP3, M4A, Opus, or Best available</p>
+        <p id="hint">Best available, WAV, MP3, M4A, or Opus.</p>
         <span className="control">
           <button type="submit" id="submit">
             Start
