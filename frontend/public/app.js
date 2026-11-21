@@ -60,6 +60,7 @@ const presets = {
 };
 
 let ticket = 0;
+let running = false;
 
 for (const [name, label] of stemNames) {
   const row = document.createElement("label");
@@ -80,6 +81,9 @@ fileInput.accept = uploadTypes.map(([ext]) => "." + ext).join(",");
 fileTypes.textContent = uploadTypeList();
 syncSource();
 syncMode();
+syncSubmit();
+
+urlInput.addEventListener("input", syncSubmit);
 
 form.addEventListener("change", (event) => {
   const target = event.target;
@@ -95,6 +99,7 @@ form.addEventListener("change", (event) => {
   if (target === fileInput) {
     noteFile(fileInput.files && fileInput.files[0]);
   }
+  syncSubmit();
 });
 
 form.addEventListener("submit", async (event) => {
@@ -134,6 +139,7 @@ form.addEventListener("submit", async (event) => {
   logEl.hidden = true;
   logEl.textContent = "";
   setStatus("Starting…", "running");
+  running = true;
   submitButton.disabled = true;
   submitButton.textContent = "Working…";
 
@@ -216,8 +222,37 @@ function setStatus(text, state) {
 
 function finish(text, state) {
   setStatus(text, state);
-  submitButton.disabled = false;
+  running = false;
   submitButton.textContent = "Start";
+  syncSubmit();
+}
+
+function selectionReady() {
+  if (source() === "file") {
+    const file = fileInput.files && fileInput.files[0];
+    if (!file || !allowedUpload(file.name)) {
+      return false;
+    }
+  } else if (!urlInput.value.trim() || !urlInput.checkValidity()) {
+    return false;
+  }
+  const mode = String(new FormData(form).get("mode") || "track");
+  if (
+    mode === "instrumental" &&
+    presetSelect.value !== "instrumental" &&
+    !checkedStems().length
+  ) {
+    return false;
+  }
+  return true;
+}
+
+function syncSubmit() {
+  if (running) {
+    submitButton.disabled = true;
+    return;
+  }
+  submitButton.disabled = !selectionReady();
 }
 
 function checkedStems() {

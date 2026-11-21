@@ -89,7 +89,7 @@ export default function Page() {
         </label>
         <p id="hint">Best available, WAV, MP3, M4A, or Opus.</p>
         <span className="control">
-          <button type="submit" id="submit">
+          <button type="submit" id="submit" disabled>
             Start
           </button>
         </span>
