@@ -141,7 +141,12 @@ input[type="file"]::file-selector-button {
   border-radius: 0.5rem;
   color: var(--accent-ink);
   font: inherit;
+  font-style: italic;
   font-weight: 650;
+  text-shadow:
+    0.06em 0 0 color-mix(in srgb, var(--accent-ink) 62%, transparent),
+    0.12em 0 0 color-mix(in srgb, var(--accent-ink) 34%, transparent),
+    0 2px 16px var(--accent-ink);
   cursor: pointer;
 }
 
@@ -175,6 +180,10 @@ legend,
   font-style: italic;
   font-weight: 600;
   font-size: 1.15rem;
+  text-shadow:
+    0.06em 0 0 color-mix(in srgb, var(--ok) 62%, transparent),
+    0.12em 0 0 color-mix(in srgb, var(--ok) 34%, transparent),
+    0 2px 16px var(--ok);
 }
 
 legend {
@@ -322,7 +331,12 @@ button {
   background-color: transparent;
   color: var(--accent-ink);
   font: inherit;
+  font-style: italic;
   font-weight: 650;
+  text-shadow:
+    0.06em 0 0 color-mix(in srgb, var(--accent-ink) 62%, transparent),
+    0.12em 0 0 color-mix(in srgb, var(--accent-ink) 34%, transparent),
+    0 2px 16px var(--accent-ink);
   cursor: pointer;
 }
 
