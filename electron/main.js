@@ -287,7 +287,6 @@ async function bootApp() {
     const support = supportDir();
     const ffmpegDir = await prepare({
       python: paths.python,
-      appRoot: paths.appRoot,
       support,
       onStatus: (message) => appendLog(win, message),
     });

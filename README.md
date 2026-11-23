@@ -11,7 +11,7 @@ Make instrumentals, split stems, export to different file types for remixing and
 
 ## Mac app
 
-Download `Cloud.Chaser-1.1.0-arm64-mac.zip` from the [GitHub Releases](https://github.com/dwwr/cloud-chaser/releases) page. This build is for Apple silicon Macs.
+Download `Cloud.Chaser-1.1.1-arm64-mac.zip` from the [GitHub Releases](https://github.com/dwwr/cloud-chaser/releases) page. This build is for Apple silicon Macs.
 
 Unzip it and move `Cloud Chaser.app` into Applications.
 
@@ -21,10 +21,10 @@ The first launch can take a while. Cloud Chaser installs the stem tools, and it 
 
 ## Command line
 
-The same release page has `cloud-chaser-cli-1.1.0.zip`. You can also use a checkout of this repository. The commands need Python 3.10 or newer.
+The same release page has `cloud-chaser-cli-1.1.1.zip`. You can also use a checkout of this repository. The commands need Python 3.10 or newer.
 
 ```bash
-unzip cloud-chaser-cli-1.1.0.zip -d cloud-chaser
+unzip cloud-chaser-cli-1.1.1.zip -d cloud-chaser
 cd cloud-chaser
 python3 -m venv .venv
 source .venv/bin/activate

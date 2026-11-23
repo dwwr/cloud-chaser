@@ -1,6 +1,6 @@
 [project]
 name = "soundcloud-pull"
-version = "1.1.0"
+version = "1.1.1"
 description = "Download your own tracks from a music streaming link and recover instrumentals with Demucs."
 readme = "README.md"
 requires-python = ">=3.10"

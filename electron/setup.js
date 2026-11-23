@@ -165,7 +165,9 @@ async function downloadFfmpeg(support, onStatus) {
   return dest;
 }
 
-async function prepare({ python, appRoot, support, onStatus }) {
+const STEM_PACKAGES = ["demucs>=4.0.0", "numpy>=1.26"];
+
+async function prepare({ python, support, onStatus }) {
   fs.mkdirSync(support, { recursive: true });
   const packages = path.join(support, "python-packages");
   const stamp = path.join(support, "ready");
@@ -180,8 +182,16 @@ async function prepare({ python, appRoot, support, onStatus }) {
     await onStatus("Installing stem tools. This download is large.\n");
     await run(
       python,
-      ["-m", "pip", "install", "--disable-pip-version-check", "--target", packages, ".[instrumental]"],
-      { cwd: appRoot, env: process.env },
+      [
+        "-m",
+        "pip",
+        "install",
+        "--disable-pip-version-check",
+        "--target",
+        packages,
+        ...STEM_PACKAGES,
+      ],
+      { cwd: support, env: process.env },
       onStatus
     );
   }
