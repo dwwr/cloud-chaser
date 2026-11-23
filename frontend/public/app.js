@@ -18,15 +18,10 @@ const fileSource = document.querySelector("#file-source");
 const fileTypes = document.querySelector("#file-types");
 const fileError = document.querySelector("#file-error");
 
-const hints = {
-  track: "Saves the audio file for that track.",
-  instrumental: "Separates vocals locally. This can take several minutes.",
-  fine: "Separation takes several minutes. Guitar and piano are the less reliable pair.",
-};
-
 const formats = {
   track: [
     ["best", "Best available"],
+    ["wav", "WAV"],
     ["mp3", "MP3"],
     ["m4a", "M4A"],
     ["opus", "Opus"],
@@ -65,6 +60,7 @@ const presets = {
 };
 
 let ticket = 0;
+let running = false;
 
 for (const [name, label] of stemNames) {
   const row = document.createElement("label");
@@ -83,11 +79,13 @@ applyPreset("instrumental");
 syncPresetExtras();
 fileInput.accept = uploadTypes.map(([ext]) => "." + ext).join(",");
 fileTypes.textContent = uploadTypeList();
-renderFormats("track");
 syncSource();
+syncMode();
+syncSubmit();
+
+urlInput.addEventListener("input", syncSubmit);
 
 form.addEventListener("change", (event) => {
-  const mode = String(new FormData(form).get("mode") || "track");
   const target = event.target;
   if (target === presetSelect) {
     applyPreset(presetSelect.value);
@@ -95,14 +93,13 @@ form.addEventListener("change", (event) => {
     presetSelect.value = "custom";
   }
   syncSubmix();
-  syncStemPanel(mode);
   syncPresetExtras();
   syncSource();
+  syncMode();
   if (target === fileInput) {
     noteFile(fileInput.files && fileInput.files[0]);
   }
-  hint.textContent = hintFor(mode);
-  renderFormats(mode);
+  syncSubmit();
 });
 
 form.addEventListener("submit", async (event) => {
@@ -122,6 +119,11 @@ form.addEventListener("submit", async (event) => {
     }
     clearFileError();
   }
+  if (fromFile && mode === "track") {
+    result.hidden = false;
+    setStatus("Whole track is only available for a link.", "error");
+    return;
+  }
   const body = { url: urlInput.value.trim(), mode, format: audioFormat };
   if (mode === "instrumental") {
     const single = presetSelect.value === "instrumental";
@@ -137,11 +139,15 @@ form.addEventListener("submit", async (event) => {
   logEl.hidden = true;
   logEl.textContent = "";
   setStatus("Starting…", "running");
+  running = true;
   submitButton.disabled = true;
   submitButton.textContent = "Working…";
 
   try {
-    const response = await fetch("/api/jobs", fromFile ? fileRequest(file, body) : jsonRequest(body));
+    const response = await fetch(
+      "/api/jobs",
+      fromFile ? fileRequest(file, body) : jsonRequest(body),
+    );
     const payload = await readJson(response);
     if (mine !== ticket) {
       return;
@@ -216,12 +222,43 @@ function setStatus(text, state) {
 
 function finish(text, state) {
   setStatus(text, state);
-  submitButton.disabled = false;
+  running = false;
   submitButton.textContent = "Start";
+  syncSubmit();
+}
+
+function selectionReady() {
+  if (source() === "file") {
+    const file = fileInput.files && fileInput.files[0];
+    if (!file || !allowedUpload(file.name)) {
+      return false;
+    }
+  } else if (!urlInput.value.trim() || !urlInput.checkValidity()) {
+    return false;
+  }
+  const mode = String(new FormData(form).get("mode") || "track");
+  if (
+    mode === "instrumental" &&
+    presetSelect.value !== "instrumental" &&
+    !checkedStems().length
+  ) {
+    return false;
+  }
+  return true;
+}
+
+function syncSubmit() {
+  if (running) {
+    submitButton.disabled = true;
+    return;
+  }
+  submitButton.disabled = !selectionReady();
 }
 
 function checkedStems() {
-  return [...stemList.querySelectorAll("input:checked")].map((input) => input.value);
+  return [...stemList.querySelectorAll("input:checked")].map(
+    (input) => input.value,
+  );
 }
 
 function applyPreset(name) {
@@ -250,7 +287,9 @@ function syncPresetExtras() {
 }
 
 function syncSubmix() {
-  const lock = presetSelect.value !== "instrumental" && checkedStems().length === stemNames.length;
+  const lock =
+    presetSelect.value !== "instrumental" &&
+    checkedStems().length === stemNames.length;
   if (lock) {
     submixInput.checked = false;
   }
@@ -262,29 +301,27 @@ function syncStemPanel(mode) {
 }
 
 function hintFor(mode) {
-  if (mode !== "instrumental") {
-    if (source() === "file") {
-      return "Saves that file. MP3, M4A, and Opus convert it.";
-    }
-    return hints.track;
+  const outputs = outputList(mode) + ".";
+  if (mode === "instrumental") {
+    return outputs + " This may take several minutes.";
   }
-  const selected = checkedStems();
-  if (presetSelect.value === "instrumental") {
-    return "Saves one instrumental file with the vocals removed. This can take several minutes.";
+  return outputs;
+}
+
+function outputList(mode) {
+  const labels = (formats[mode] || formats.track).map(([, label]) => label);
+  if (labels.length < 2) {
+    return labels.join(", ");
   }
-  if (presetSelect.value === "all" || selected.includes("guitar") || selected.includes("piano")) {
-    return hints.fine;
+  if (labels.length === 2) {
+    return labels[0] + " or " + labels[1];
   }
-  return hints.instrumental;
+  const last = labels[labels.length - 1];
+  return labels.slice(0, -1).join(", ") + ", or " + last;
 }
 
 function renderFormats(mode) {
-  const choices = (formats[mode] || formats.track).map(([value, label]) => {
-    if (value === "best" && source() === "file") {
-      return [value, "Original"];
-    }
-    return [value, label];
-  });
+  const choices = formats[mode] || formats.track;
   const current = formatSelect.value;
   formatSelect.replaceChildren();
   for (const [value, label] of choices) {
@@ -309,6 +346,28 @@ function syncSource() {
   urlInput.disabled = file;
   urlInput.required = !file;
   fileInput.required = file;
+  const trackMode = form.querySelector('input[name="mode"][value="track"]');
+  if (!trackMode) {
+    return;
+  }
+  trackMode.disabled = file;
+  if (file && trackMode.checked) {
+    const stemsMode = form.querySelector(
+      'input[name="mode"][value="instrumental"]',
+    );
+    if (stemsMode) {
+      stemsMode.checked = true;
+    }
+  }
+}
+
+function syncMode() {
+  const mode = String(new FormData(form).get("mode") || "track");
+  syncStemPanel(mode);
+  if (hint) {
+    hint.textContent = hintFor(mode);
+  }
+  renderFormats(mode);
 }
 
 function uploadLabels() {

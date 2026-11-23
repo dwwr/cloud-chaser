@@ -41,7 +41,7 @@ STATIC_FILES = {
 }
 MODES = {"track", "instrumental"}
 FORMATS = {
-    "track": {"best", "mp3", "m4a", "opus"},
+    "track": {"best", "wav", "mp3", "m4a", "opus"},
     "instrumental": {"wav", "mp3"},
 }
 DEFAULT_FORMAT = {"track": "best", "instrumental": "wav"}
@@ -231,6 +231,8 @@ class JobStore:
     ) -> dict[str, object]:
         if mode not in MODES:
             raise ValueError("Mode must be track or instrumental.")
+        if upload is not None and mode == "track":
+            raise ValueError("Whole track is only available for a link.")
         if audio_format not in FORMATS[mode]:
             raise ValueError("That file type is not available for this download.")
         chosen: list[str] | None = None

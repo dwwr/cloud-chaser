@@ -43,6 +43,7 @@ SoundCloud and YouTube's terms restrict downloading other people's content witho
 
 UPLOAD_SUFFIXES = frozenset(suffix for suffix, _label in UPLOAD_AUDIO)
 TRACK_CODECS = {
+    "wav": ["-codec:a", "pcm_s16le"],
     "mp3": ["-codec:a", "libmp3lame", "-q:a", "0"],
     "m4a": ["-codec:a", "aac", "-b:a", "256k"],
     "opus": ["-codec:a", "libopus", "-b:a", "192k"],
@@ -74,7 +75,7 @@ def build_track_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--format",
-        choices=("best", "mp3", "m4a", "opus"),
+        choices=("best", "wav", "mp3", "m4a", "opus"),
         default="best",
         help="Preferred audio format (default: best available)",
     )
