@@ -19,8 +19,18 @@ from make_instrumental import parse_stems, prepare_separation
 
 
 ROOT = Path(__file__).resolve().parent
-WEB_ROOT = ROOT / "web"
-JOBS_ROOT = ROOT / "jobs"
+
+
+def configured_path(name: str, default: Path) -> Path:
+    override = os.environ.get(name, "").strip()
+    if override:
+        return Path(override)
+    return default
+
+
+WEB_ROOT = configured_path("CLOUD_CHASER_WEB_ROOT", ROOT / "web")
+JOBS_ROOT = configured_path("CLOUD_CHASER_JOBS", ROOT / "jobs")
+SITE_ROOT = bool(os.environ.get("CLOUD_CHASER_WEB_ROOT", "").strip())
 JOB_ID = re.compile(r"^[0-9a-f]{32}$")
 AUDIO_SUFFIXES = frozenset(suffix for suffix, _label in UPLOAD_AUDIO)
 AUDIO_TYPES = {
@@ -38,6 +48,22 @@ STATIC_FILES = {
     "index.html": "text/html; charset=utf-8",
     "style.css": "text/css; charset=utf-8",
     "app.js": "text/javascript; charset=utf-8",
+}
+SITE_TYPES = {
+    ".css": "text/css; charset=utf-8",
+    ".html": "text/html; charset=utf-8",
+    ".ico": "image/x-icon",
+    ".jpeg": "image/jpeg",
+    ".jpg": "image/jpeg",
+    ".js": "text/javascript; charset=utf-8",
+    ".json": "application/json",
+    ".map": "application/json",
+    ".png": "image/png",
+    ".svg": "image/svg+xml",
+    ".txt": "text/plain; charset=utf-8",
+    ".webp": "image/webp",
+    ".woff": "font/woff",
+    ".woff2": "font/woff2",
 }
 MODES = {"track", "instrumental"}
 FORMATS = {
@@ -107,6 +133,26 @@ def file_payload(job_id: str, job_dir: Path, path: Path) -> dict[str, str]:
     relative = path.relative_to(job_dir).as_posix()
     quoted = "/".join(quote(part) for part in relative.split("/"))
     return {"name": relative, "url": f"/files/{job_id}/{quoted}"}
+
+
+def resolve_site_file(relative: str) -> Path | None:
+    root = WEB_ROOT.resolve()
+    if not relative or relative.endswith("/"):
+        relative = f"{relative}index.html"
+    candidate = (root / relative).resolve()
+    try:
+        candidate.relative_to(root)
+    except ValueError:
+        return None
+    if candidate.is_dir():
+        candidate = candidate / "index.html"
+    if not candidate.is_file():
+        return None
+    return candidate
+
+
+def site_content_type(path: Path) -> str:
+    return SITE_TYPES.get(path.suffix.lower(), "application/octet-stream")
 
 
 def content_disposition(name: str) -> str:
@@ -377,12 +423,13 @@ class Handler(BaseHTTPRequestHandler):
 
     def route_get(self) -> None:
         parts = self.parts()
-        if not parts:
-            self.send_static("index.html")
-            return
-        if len(parts) == 1 and parts[0] in STATIC_FILES:
-            self.send_static(parts[0])
-            return
+        if not SITE_ROOT:
+            if not parts:
+                self.send_static("index.html")
+                return
+            if len(parts) == 1 and parts[0] in STATIC_FILES:
+                self.send_static(parts[0])
+                return
         if len(parts) == 3 and parts[0] == "api" and parts[1] == "jobs":
             snapshot = self.server.jobs.snapshot(parts[2])
             if snapshot is None:
@@ -397,6 +444,13 @@ class Handler(BaseHTTPRequestHandler):
                 return
             content_type = AUDIO_TYPES.get(path.suffix.lower(), "application/octet-stream")
             self.send_file(path, content_type, path.name)
+            return
+        if SITE_ROOT:
+            site = resolve_site_file("/".join(parts))
+            if site is None:
+                self.send_json(404, {"error": "Not found."})
+                return
+            self.send_file(site, site_content_type(site))
             return
         self.send_json(404, {"error": "Not found."})
 

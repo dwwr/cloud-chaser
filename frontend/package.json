@@ -6,6 +6,7 @@
     "dev:api": "../.venv/bin/python ../cli.py run",
     "dev:all": "concurrently -n api,web \"npm run dev:api\" \"npm run dev\"",
     "build": "next build",
+    "export": "CLOUD_CHASER_EXPORT=1 next build",
     "start": "next start"
   },
   "dependencies": {
