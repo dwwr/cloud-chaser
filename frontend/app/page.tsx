@@ -1,10 +1,10 @@
 export default function Page() {
   return (
     <main>
-      <header>
-        <h1>Cloud Chaser</h1>
-      </header>
       <form id="form">
+        <header>
+          <h1>Cloud Chaser</h1>
+        </header>
         <fieldset>
           <legend>Source</legend>
           <div className="modes">
