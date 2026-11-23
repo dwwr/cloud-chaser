@@ -118,6 +118,11 @@ select {
   background-color: transparent;
 }
 
+input[type="url"]::placeholder {
+  color: var(--ink);
+  opacity: 1;
+}
+
 select {
   padding-right: calc(0.8rem + 1rem);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 17 10'%3E%3Cpath d='M1 1.2 L8.5 8.2 L16 1.2' fill='none' stroke='%23ff0080' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");

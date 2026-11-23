@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Download a SoundCloud or YouTube track (or use a local file) and recover an instrumental via Demucs."""
+"""Download a track from a music streaming link (or use a local file) and recover an instrumental via Demucs."""
 
 from __future__ import annotations
 
@@ -34,13 +34,12 @@ Separation is an AI estimate (not true studio stems).
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
-            "Download one SoundCloud or YouTube track (or use a local mix), run Demucs "
+            "Download one track from a music streaming link (or use a local mix), run Demucs "
             "separation, and save an instrumental or the stems you name."
         ),
         epilog=(
             "Examples:\n"
-            "  make-instrumental https://soundcloud.com/you/track-slug\n"
-            "  make-instrumental https://www.youtube.com/watch?v=VIDEO_ID\n"
+            "  make-instrumental \"music streaming link\"\n"
             "  make-instrumental --stems vocals --submix URL\n"
             "  make-instrumental --stems drums --stems bass URL\n"
             "  make-instrumental ./downloads/You/Track\\ [id].mp3\n"
@@ -51,7 +50,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "source",
-        help="SoundCloud or YouTube track URL, or a path to a local audio file",
+        help="music streaming link, or a path to a local audio file",
     )
     parser.add_argument(
         "-o",
@@ -129,8 +128,8 @@ def resolve_mix_path(
 
     if not is_supported_url(source):
         raise ValueError(
-            f"Not a local file or a SoundCloud or YouTube URL: {source}\n"
-            "Pass a track URL or an existing audio file path."
+            f"Not a local file or a music streaming link: {source}\n"
+            "Pass a music streaming link or an existing audio file path."
         )
 
     validate_source_url(source)

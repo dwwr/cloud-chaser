@@ -19,14 +19,14 @@ export default function Page() {
           </div>
         </fieldset>
         <label className="field" id="link-source">
-          <span>Track link</span>
+          <span>music streaming link</span>
           <span className="control">
             <input
               id="url"
               name="url"
               type="url"
               required
-              placeholder="Link"
+              placeholder="music streaming link"
               autoComplete="off"
               spellCheck={false}
             />
