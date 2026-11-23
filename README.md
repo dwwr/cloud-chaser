@@ -1,116 +1,69 @@
 # Cloud Chaser
 
+Download tracks you uploaded, or otherwise have the right to download, from a music streaming link. Recover an instrumental with Demucs when you no longer have the original files.
+
+**Only use this for tracks you uploaded or otherwise have the right to download.** Do not use it to take other people's music without permission.
+
+## Mac app
+
+Download `Cloud Chaser-1.1.0-arm64-mac.zip` from the [GitHub Releases](https://github.com/dwwr/cloud-chaser/releases) page. This build is for Apple silicon Macs.
+
+Unzip it and move `Cloud Chaser.app` into Applications.
+
+The app is not signed. The first time you open it, right-click `Cloud Chaser.app` and choose Open.
+
+The first launch can take a while. Cloud Chaser installs the stem tools, and it downloads ffmpeg when your Mac does not already have it. Later launches skip that install.
+
+## Command line
+
+The same release page has `cloud-chaser-cli-1.1.0.zip`. You can also use a checkout of this repository. The commands need Python 3.10 or newer.
+
+```bash
+unzip cloud-chaser-cli-1.1.0.zip -d cloud-chaser
+cd cloud-chaser
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e .
+```
+
+Install Demucs too when you want instrumentals. This download is large.
+
+```bash
+pip install -e ".[instrumental]"
+```
+
+ffmpeg is required only when you convert audio to mp3, m4a, or opus.
+
+`pip install -e .` adds the `cloud-chaser` command. From a checkout, `python cli.py` runs the same commands.
+
+```bash
+cloud-chaser run
+cloud-chaser pull "music streaming link"
+cloud-chaser track "music streaming link"
+cloud-chaser instrumental "music streaming link"
+```
+
+`run` opens the local web app at http://127.0.0.1:8765. `serve` does the same thing. `pull` downloads a profile, a playlist, or one track. `track` downloads one track, or saves a local audio file. `instrumental` downloads one track and saves an instrumental.
+
+Pass `--help` after a command to see its flags. Quote a link in zsh, because `?` is a glob.
+
+```bash
+cloud-chaser track --help
+cloud-chaser track -o ./recovered --format mp3 "music streaming link"
+cloud-chaser pull --dry-run --limit 5 "music streaming link"
+cloud-chaser pull --cookies-from-browser chrome "music streaming link"
+cloud-chaser instrumental "./downloads/track.mp3"
+```
+
+Downloaded files land under `./downloads/<uploader>/<title> [<id>].<ext>`, plus a `.info.json` file. Existing files are left in place. An instrumental is written under `./instrumentals/`.
+
+Separation is an AI estimate, not a studio stem. Dense mixes can leave vocal bleed. Quality also depends on what the service still hosts for that upload.
+
+## Work on the web app
+
 ```bash
 cd frontend
 npm run dev:all
 ```
 
-Starts the Python server at http://127.0.0.1:8765 and the Next.js app at http://127.0.0.1:3000.
-
-```bash
-python cli.py run
-```
-
-Opens the local app at http://127.0.0.1:8765.
-
-Recover audio from a **music streaming link** when you've lost the original files.
-
-This CLI wraps [yt-dlp](https://github.com/yt-dlp/yt-dlp) so you can download a whole profile, a playlist, or a single track URL into a local folder. An optional second script uses [Demucs](https://github.com/adefossez/demucs) to separate vocals and save an instrumental.
-
-**Only use this for tracks you uploaded or otherwise have the right to download.** Do not use it to take other people's music without permission.
-
-## Requirements
-
-- Python 3.10+
-- Optional: [ffmpeg](https://ffmpeg.org/) if you want to convert to `mp3` / `m4a` / `opus`
-- For instrumentals: Demucs (pulls in PyTorch); a GPU helps but CPU works
-
-## Install
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-# optional: install as console commands
-pip install -e .
-```
-
-For the instrumental script (heavier — installs Demucs + torch):
-
-```bash
-pip install -e ".[instrumental]"
-# or: pip install -r requirements-instrumental.txt
-```
-
-## Usage
-
-Download everything on your public profile:
-
-```bash
-python soundcloud_pull.py "music streaming link"
-```
-
-One track:
-
-```bash
-python soundcloud_pull.py "music streaming link"
-```
-
-Choose an output folder and convert to MP3:
-
-```bash
-python soundcloud_pull.py -o ./recovered --format mp3 "music streaming link"
-```
-
-Preview without downloading:
-
-```bash
-python soundcloud_pull.py --dry-run --limit 5 "music streaming link"
-```
-
-### Private tracks / original files
-
-Logged-in cookies often unlock private tracks and, when the service still has it, the original upload format:
-
-```bash
-# From an exported Netscape cookies file:
-python soundcloud_pull.py --cookies cookies.txt "music streaming link"
-
-# Or pull cookies straight from a browser on this machine:
-python soundcloud_pull.py --cookies-from-browser chrome "music streaming link"
-```
-
-## Recover an instrumental
-
-`make_instrumental.py` downloads **one** track (or uses a local mix), runs Demucs in two-stem mode (`--two-stems=vocals`), and saves Demucs’s `no_vocals` stem as the instrumental.
-
-```bash
-# From a music streaming link (quote it — zsh treats ? as a glob)
-python make_instrumental.py "music streaming link"
-
-# From a file you already downloaded
-python make_instrumental.py "./downloads/You/Track [id].mp3"
-
-# Private track + force CPU + keep vocals stem too
-python make_instrumental.py --cookies-from-browser chrome --device cpu --keep-stems "URL"
-```
-
-Output defaults:
-
-- Mix → `./downloads/…` (unchanged if you passed a local file)
-- Instrumental → `./instrumentals/<track> instrumental.wav`
-- Demucs work files → `./instrumentals/.demucs-work/`
-
-Use `--mp3` for smaller Demucs output, `--instrumental-dir` to change the result folder, and `--model` to pick another Demucs model (default `htdemucs`).
-
-**Quality note:** This is an AI estimate of the instrumental, not a true studio stem. Dense mixes can leave vocal bleed or artifacts. Prefer Creator Studio / project files when you still have them.
-
-## Output
-
-Files from `soundcloud_pull` land under `./downloads/<uploader>/<title> [<id>].<ext>` by default, plus a `.info.json` sidecar with metadata. Existing files are not overwritten.
-
-## Notes
-
-- Quality depends on what the service still hosts for that upload (often 128 kbps AAC/MP3 for streamed tracks — not lossless masters).
-- If the service still has your original upload, prefer downloading that first for the highest quality.
-- Rate limits and site changes can break extractors; update yt-dlp (`pip install -U yt-dlp`) if downloads start failing.
+That starts the Python server at http://127.0.0.1:8765 and the Next.js app at http://127.0.0.1:3000.
