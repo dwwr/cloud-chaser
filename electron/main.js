@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, screen, shell } = require("electron");
+const { app, BrowserWindow, ipcMain, nativeImage, screen, shell } = require("electron");
 const { spawn } = require("child_process");
 const fs = require("fs");
 const http = require("http");
@@ -309,12 +309,17 @@ app.on("window-all-closed", () => {
 app.on("before-quit", stopServer);
 
 app.whenReady().then(async () => {
+  const icon = nativeImage.createFromPath(path.join(__dirname, "icon.png"));
+  if (process.platform === "darwin" && app.dock && !icon.isEmpty()) {
+    app.dock.setIcon(icon);
+  }
   win = new BrowserWindow({
     width: 640,
     height: 754,
     useContentSize: true,
     resizable: false,
     title: "Cloud Chaser",
+    icon,
     backgroundColor: "#0080ff",
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),

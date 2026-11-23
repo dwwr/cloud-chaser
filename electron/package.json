@@ -27,10 +27,12 @@
       "setup.js",
       "setup.html",
       "splash.html",
-      "houseplants.png"
+      "houseplants.png",
+      "icon.png"
     ],
     "mac": {
       "category": "public.app-category.music",
+      "icon": "icon.png",
       "target": ["zip"],
       "identity": null,
       "gatekeeperAssess": false
