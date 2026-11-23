@@ -44,12 +44,32 @@ function request(url, redirects) {
   });
 }
 
-function download(url) {
+function formatBytes(value) {
+  if (value < 1024) {
+    return `${value} B`;
+  }
+  if (value < 1024 * 1024) {
+    return `${(value / 1024).toFixed(1)} KB`;
+  }
+  return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function download(url, onStatus) {
   return request(url).then(
     (res) =>
       new Promise((resolve, reject) => {
+        const total = Number(res.headers["content-length"]) || 0;
         const chunks = [];
-        res.on("data", (chunk) => chunks.push(chunk));
+        let received = 0;
+        res.on("data", (chunk) => {
+          chunks.push(chunk);
+          received += chunk.length;
+          if (onStatus) {
+            const got = formatBytes(received);
+            const all = total ? ` / ${formatBytes(total)}` : "";
+            onStatus(`\rffmpeg ${got}${all}`);
+          }
+        });
         res.on("end", () => resolve(Buffer.concat(chunks)));
         res.on("error", reject);
       })
@@ -60,18 +80,11 @@ function run(command, args, options, onStatus) {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, { ...options, stdio: ["ignore", "pipe", "pipe"] });
     let text = "";
-    let last = "";
     const take = (chunk) => {
-      text += chunk.toString();
-      const lines = text.split(/\r?\n/);
-      text = lines.pop() || "";
-      for (const line of lines) {
-        if (line) {
-          last = line;
-        }
-      }
-      if (last && onStatus) {
-        onStatus(last);
+      const piece = chunk.toString();
+      text += piece;
+      if (onStatus) {
+        onStatus(piece);
       }
     };
     child.stdout.on("data", take);
@@ -82,7 +95,12 @@ function run(command, args, options, onStatus) {
         resolve();
         return;
       }
-      reject(new Error((text || last).trim() || `Command failed (${code}).`));
+      const visible = text
+        .split("\n")
+        .map((line) => line.split("\r").pop())
+        .join("\n")
+        .trim();
+      reject(new Error(visible.split("\n").filter(Boolean).at(-1) || `Command failed (${code}).`));
     });
   });
 }
@@ -124,13 +142,16 @@ function findFfmpeg(support) {
   });
 }
 
-async function downloadFfmpeg(support) {
+async function downloadFfmpeg(support, onStatus) {
   const asset = FFMPEG_ASSETS[process.arch];
   if (!asset) {
     throw new Error(`ffmpeg is not available for ${process.arch}.`);
   }
   const url = `https://github.com/eugeneware/ffmpeg-static/releases/download/${FFMPEG_RELEASE}/${asset.file}`;
-  const packed = await download(url);
+  const packed = await download(url, onStatus);
+  if (onStatus) {
+    onStatus("\n");
+  }
   const digest = crypto.createHash("sha256").update(packed).digest("hex");
   if (digest !== asset.sha256) {
     throw new Error("The ffmpeg download did not match the pinned checksum.");
@@ -156,7 +177,7 @@ async function prepare({ python, appRoot, support, onStatus }) {
   }
   fs.mkdirSync(packages, { recursive: true });
   if (!(await canImport(python, packages))) {
-    await onStatus("Installing stem tools. This download is large.");
+    await onStatus("Installing stem tools. This download is large.\n");
     await run(
       python,
       ["-m", "pip", "install", "--disable-pip-version-check", "--target", packages, ".[instrumental]"],
@@ -166,8 +187,8 @@ async function prepare({ python, appRoot, support, onStatus }) {
   }
   let binary = await findFfmpeg(support);
   if (!binary) {
-    await onStatus("Downloading ffmpeg.");
-    binary = await downloadFfmpeg(support);
+    await onStatus("Downloading ffmpeg.\n");
+    binary = await downloadFfmpeg(support, onStatus);
   }
   fs.writeFileSync(stamp, marker);
   return path.dirname(binary);

@@ -1,12 +1,99 @@
-const { app, BrowserWindow } = require("electron");
+const { app, BrowserWindow, ipcMain, screen } = require("electron");
 const { spawn } = require("child_process");
 const fs = require("fs");
 const http = require("http");
 const path = require("path");
 const { prepare } = require("./setup");
 
+const FIT_CSS = [
+  "html, body { margin: 0 !important; padding: 0 !important; min-height: 0 !important; height: 100% !important; background: #0080ff !important; overflow-x: hidden !important; overflow-y: auto !important; }",
+  "main { width: 40rem !important; max-width: none !important; margin: 0 !important; padding: 0 !important; }",
+  ".rights { display: none !important; }",
+  "#form { margin: 0 !important; }",
+].join("");
+
+const FIT_PAGE = `(() => {
+  if (window.__cloudChaserFit) {
+    return;
+  }
+  window.__cloudChaserFit = true;
+  const report = () => {
+    const form = document.querySelector("#form");
+    if (!form || !window.cloudChaser) {
+      return;
+    }
+    const formBox = form.getBoundingClientRect();
+    let right = formBox.right;
+    let bottom = formBox.bottom;
+    const result = document.querySelector("#result");
+    if (result && !result.hidden) {
+      const resultBox = result.getBoundingClientRect();
+      right = Math.max(right, resultBox.right);
+      bottom = Math.max(bottom, resultBox.bottom);
+    }
+    window.cloudChaser.setContentSize(right, bottom);
+  };
+  const watch = new ResizeObserver(report);
+  const form = document.querySelector("#form");
+  const result = document.querySelector("#result");
+  if (form) {
+    watch.observe(form);
+  }
+  if (result) {
+    watch.observe(result);
+    new MutationObserver(report).observe(result, { attributes: true, attributeFilter: ["hidden"] });
+  }
+  report();
+})()`;
+
 let server = null;
 let port = 8765;
+let win = null;
+let lockedWidth = null;
+let lockTimer = null;
+
+function lockVerticalResize() {
+  if (!win || lockedWidth != null) {
+    return;
+  }
+  const bounds = win.getBounds();
+  const workArea = screen.getDisplayMatching(bounds).workArea;
+  if (bounds.height > workArea.height) {
+    win.setBounds({ ...bounds, height: workArea.height, y: workArea.y });
+  }
+  const locked = win.getBounds();
+  lockedWidth = locked.width;
+  win.setMinimumSize(locked.width, 240);
+  win.setMaximumSize(locked.width, workArea.height);
+  win.setResizable(true);
+}
+
+function scheduleLock() {
+  if (lockedWidth != null) {
+    return;
+  }
+  clearTimeout(lockTimer);
+  lockTimer = setTimeout(lockVerticalResize, 500);
+}
+
+ipcMain.on("content-size", (_event, size) => {
+  if (!win || !size || lockedWidth != null) {
+    return;
+  }
+  const width = Math.ceil(Number(size.width));
+  const height = Math.ceil(Number(size.height));
+  if (width < 200 || height < 80) {
+    return;
+  }
+  const [currentWidth, currentHeight] = win.getContentSize();
+  if (currentWidth !== width || currentHeight !== height) {
+    win.setContentSize(width, height);
+  }
+  const url = win.webContents.getURL();
+  if (url.startsWith("http://127.0.0.1:")) {
+    scheduleLock();
+  }
+});
 
 app.setName("Cloud Chaser");
 
@@ -115,9 +202,14 @@ function waitForServer(child) {
   });
 }
 
-function showStatus(win, message) {
-  const payload = JSON.stringify(String(message));
-  return win.webContents.executeJavaScript(`document.querySelector("#status").textContent = ${payload}`);
+let logChain = Promise.resolve();
+
+function appendLog(target, chunk) {
+  const payload = JSON.stringify(String(chunk));
+  logChain = logChain
+    .then(() => target.webContents.executeJavaScript(`window.cloudChaserWriteLog(${payload})`))
+    .catch(() => {});
+  return logChain;
 }
 
 app.on("window-all-closed", () => {
@@ -128,14 +220,45 @@ app.on("window-all-closed", () => {
 app.on("before-quit", stopServer);
 
 app.whenReady().then(async () => {
-  const win = new BrowserWindow({
-    width: 1100,
-    height: 800,
+  win = new BrowserWindow({
+    width: 640,
+    height: 280,
+    useContentSize: true,
+    resizable: false,
     title: "Cloud Chaser",
+    backgroundColor: "#0080ff",
     webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
     },
+  });
+  win.on("will-resize", (event, newBounds) => {
+    if (lockedWidth == null) {
+      return;
+    }
+    if (newBounds.width === lockedWidth) {
+      return;
+    }
+    event.preventDefault();
+    win.setBounds({
+      x: newBounds.x,
+      y: newBounds.y,
+      width: lockedWidth,
+      height: newBounds.height,
+    });
+  });
+  let fitted = false;
+  win.webContents.on("did-finish-load", () => {
+    const url = win.webContents.getURL();
+    if (fitted || !url.startsWith("http://127.0.0.1:")) {
+      return;
+    }
+    fitted = true;
+    win.webContents
+      .insertCSS(FIT_CSS)
+      .then(() => win.webContents.executeJavaScript(FIT_PAGE))
+      .catch(() => {});
   });
   await win.loadFile(path.join(__dirname, "setup.html"));
   try {
@@ -151,14 +274,14 @@ app.whenReady().then(async () => {
       python: paths.python,
       appRoot: paths.appRoot,
       support,
-      onStatus: (message) => showStatus(win, message),
+      onStatus: (message) => appendLog(win, message),
     });
     port = await choosePort(8765);
     const child = startServer(paths, support, ffmpegDir);
-    await showStatus(win, "Starting Cloud Chaser.");
+    await appendLog(win, "\nStarting Cloud Chaser.\n");
     await waitForServer(child);
     await win.loadURL(`http://127.0.0.1:${port}/`);
   } catch (error) {
-    await showStatus(win, error instanceof Error ? error.message : String(error));
+    await appendLog(win, `\n${error instanceof Error ? error.message : String(error)}\n`);
   }
 });

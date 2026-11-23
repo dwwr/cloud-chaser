@@ -95,6 +95,8 @@ export default function Page() {
         </span>
       </form>
       <p className="rights">
+        No one is illegal.
+        <br />
         Only use this for tracks you uploaded or otherwise have the right to
         download. Not to be used for downloading other people&apos;s content
         without permission.
