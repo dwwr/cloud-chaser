@@ -92,7 +92,7 @@ jobs:
             requirements-instrumental.txt \
             README.md
 
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         if: steps.gate.outputs.publish == 'true'
         with:
           name: Cloud Chaser ${{ steps.gate.outputs.version }}
