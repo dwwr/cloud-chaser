@@ -95,6 +95,15 @@ jobs:
       - uses: softprops/action-gh-release@v2
         if: steps.gate.outputs.publish == 'true'
         with:
+          name: Cloud Chaser ${{ steps.gate.outputs.version }}
+          body: |
+            The Mac app and the command-line tools.
+
+            **Mac, Apple silicon.** Download `Cloud.Chaser-${{ steps.gate.outputs.version }}-arm64-mac.zip`, unzip it, and move `Cloud Chaser.app` to Applications. The app is not signed. The first time you open it, macOS blocks it. Open System Settings, go to Privacy & Security, and click Open Anyway next to the Cloud Chaser message. Confirm when macOS asks again. The first launch installs the stem tools, and ffmpeg if your Mac does not already have it.
+
+            **Command line.** Download `cloud-chaser-cli-${{ steps.gate.outputs.version }}.zip`. Python 3.10 or newer. From that folder: `python3 -m venv .venv`, `source .venv/bin/activate`, then `pip install -e .`. For instrumentals, `pip install -e ".[instrumental]"`.
+
+            Only use this for tracks you uploaded or otherwise have the right to download.
           files: |
             electron/dist/*.zip
             cloud-chaser-cli-*.zip
