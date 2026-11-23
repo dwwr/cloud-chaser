@@ -12,11 +12,18 @@ exports.default = async function afterPack(context) {
     context.appOutDir,
     `${context.packager.appInfo.productFilename}.app`,
   );
+  const entitlements = path.join(__dirname, "entitlements.mac.plist");
   await signAsync({
     app: appPath,
     identity: "-",
     identityValidation: false,
     platform: "darwin",
+    optionsForFile() {
+      return {
+        entitlements,
+        hardenedRuntime: true,
+      };
+    },
   });
   execFileSync("codesign", ["--verify", "--deep", "--strict", appPath], {
     stdio: "inherit",
