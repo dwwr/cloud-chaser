@@ -94,6 +94,19 @@ export default function Page() {
           </button>
         </span>
       </form>
+      <section id="result" hidden>
+        <p id="status"></p>
+        <ul id="files"></ul>
+        <pre id="log" hidden></pre>
+      </section>
+      <p className="sites">
+        <a href="https://dwwr.github.io/" target="_blank" rel="noopener noreferrer">
+          https://dwwr.github.io/
+        </a>
+        <a href="https://buymeacoffee.com/dwwr" target="_blank" rel="noopener noreferrer">
+          https://buymeacoffee.com/dwwr
+        </a>
+      </p>
       <p className="rights">
         No one is illegal.
         <br />
@@ -101,11 +114,6 @@ export default function Page() {
         download. Not to be used for downloading other people&apos;s content
         without permission.
       </p>
-      <section id="result" hidden>
-        <p id="status"></p>
-        <ul id="files"></ul>
-        <pre id="log" hidden></pre>
-      </section>
     </main>
   );
 }

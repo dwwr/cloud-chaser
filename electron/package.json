@@ -7,6 +7,7 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
+    "dev": "npm run export --prefix ../frontend && electron .",
     "dist": "electron-builder --mac zip"
   },
   "devDependencies": {
@@ -24,7 +25,9 @@
       "main.js",
       "preload.js",
       "setup.js",
-      "setup.html"
+      "setup.html",
+      "splash.html",
+      "houseplants.png"
     ],
     "mac": {
       "category": "public.app-category.music",
