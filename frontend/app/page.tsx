@@ -108,8 +108,7 @@ export default function Page() {
         </a>
       </p>
       <p className="rights">
-        No one is illegal.
-        <br />
+        <span id="slogan">No one is illegal.</span>
         Only use this for tracks you uploaded or otherwise have the right to
         download. Not to be used for downloading other people&apos;s content
         without permission.

@@ -311,7 +311,7 @@ app.on("before-quit", stopServer);
 app.whenReady().then(async () => {
   win = new BrowserWindow({
     width: 640,
-    height: 733,
+    height: 754,
     useContentSize: true,
     resizable: false,
     title: "Cloud Chaser",

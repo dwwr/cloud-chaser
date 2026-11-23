@@ -1,3 +1,18 @@
+const slogans = [
+  "No one is illegal.",
+  "Property rights do not exist.",
+  "Seize the means of music production.",
+  "Money isn't real.",
+  "Nothing is more valuable than human life.",
+  "All cops are bastards.",
+  "You're gonna make it. It's just a bit further now.",
+  "The road to healing is going to be a long one. Stay the course, you will make it. Someday.",
+];
+const sloganEl = document.querySelector("#slogan");
+if (sloganEl) {
+  sloganEl.textContent = slogans[Math.floor(Math.random() * slogans.length)];
+}
+
 const form = document.querySelector("#form");
 const urlInput = document.querySelector("#url");
 const submitButton = document.querySelector("#submit");
