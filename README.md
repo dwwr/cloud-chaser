@@ -1,8 +1,13 @@
 # Cloud Chaser
 
-Download tracks you uploaded, or otherwise have the right to download, from a music streaming link. Recover an instrumental with Demucs when you no longer have the original files.
+Download tracks you uploaded, or otherwise have the right to download, from a music streaming link. 
+Make instrumentals, split stems, export to different file types for remixing and sampling.
 
 **Only use this for tracks you uploaded or otherwise have the right to download.** Do not use it to take other people's music without permission.
+
+| splash | main | stem splitter |
+|---|---|---|
+|<img width="1280" height="1508" alt="cloud-chaser-splash" src="https://github.com/user-attachments/assets/878efb75-1438-4e4d-8189-936f22a479cc" /> | <img width="1280" height="1508" alt="cloud-chaser-main" src="https://github.com/user-attachments/assets/522daa23-6456-4f77-b482-4a3d51c54b71" /> | <img width="1280" height="2208" alt="cloud-chaser-stems" src="https://github.com/user-attachments/assets/74440ef4-abac-46aa-b3cc-215910fbfc24" /> |
 
 ## Mac app
 
