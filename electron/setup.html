@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Cloud Chaser</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        background: #0080ff;
+      }
+      #shell {
+        box-sizing: border-box;
+        width: 40rem;
+        padding: 1.15rem;
+        background: #0080ff;
+        border: 1px solid #ff0080;
+        border-radius: 1rem;
+      }
+      #log {
+        min-height: 20rem;
+        max-height: 20rem;
+        margin: 0;
+        padding: 0.8rem;
+        overflow: auto;
+        border-radius: 0.75rem;
+        background: #141414;
+        color: #00ff80;
+        font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+        font-size: 0.82rem;
+        line-height: 1.45;
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="shell">
+      <pre id="log">Preparing the first launch.</pre>
+    </div>
+    <script>
+      window.cloudChaserWriteLog = function (chunk) {
+        const log = document.querySelector("#log");
+        const raw = (log.dataset.buffer || log.textContent) + chunk;
+        log.dataset.buffer = raw;
+        log.textContent = raw
+          .split("\n")
+          .map((line) => line.split("\r").pop())
+          .join("\n");
+        log.scrollTop = log.scrollHeight;
+      };
+      window.addEventListener("load", () => {
+        requestAnimationFrame(() => {
+          if (!window.cloudChaser) {
+            return;
+          }
+          const box = document.querySelector("#shell").getBoundingClientRect();
+          window.cloudChaser.setContentSize(box.width, box.height);
+        });
+      });
+    </script>
+  </body>
+</html>

@@ -19,14 +19,14 @@ export default function Page() {
           </div>
         </fieldset>
         <label className="field" id="link-source">
-          <span>Track link</span>
+          <span>music streaming link</span>
           <span className="control">
             <input
               id="url"
               name="url"
               type="url"
               required
-              placeholder="Link"
+              placeholder="music streaming link"
               autoComplete="off"
               spellCheck={false}
             />
@@ -94,16 +94,25 @@ export default function Page() {
           </button>
         </span>
       </form>
-      <p className="rights">
-        Only use this for tracks you uploaded or otherwise have the right to
-        download. Not to be used for downloading other people&apos;s content
-        without permission.
-      </p>
       <section id="result" hidden>
         <p id="status"></p>
         <ul id="files"></ul>
         <pre id="log" hidden></pre>
       </section>
+      <p className="sites">
+        <a href="https://dwwr.github.io/" target="_blank" rel="noopener noreferrer">
+          https://dwwr.github.io/
+        </a>
+        <a href="https://buymeacoffee.com/dwwr" target="_blank" rel="noopener noreferrer">
+          https://buymeacoffee.com/dwwr
+        </a>
+      </p>
+      <p className="rights">
+        <span id="slogan">No one is illegal.</span>
+        Only use this for tracks you uploaded or otherwise have the right to
+        download. Not to be used for downloading other people&apos;s content
+        without permission.
+      </p>
     </main>
   );
 }

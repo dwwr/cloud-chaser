@@ -35,10 +35,10 @@ Run cloud-chaser <command> --help for that command's flags.
 
 
 TRACK_BANNER = """
-cloud-chaser track — download one SoundCloud or YouTube track, or save a local audio file
+cloud-chaser track — download one track from a music streaming link, or save a local audio file
 
 Only use this for tracks you uploaded or otherwise have the right to download.
-SoundCloud and YouTube's terms restrict downloading other people's content without permission.
+Terms restrict downloading other people's content without permission.
 """.strip()
 
 UPLOAD_SUFFIXES = frozenset(suffix for suffix, _label in UPLOAD_AUDIO)
@@ -53,19 +53,18 @@ TRACK_CODECS = {
 def build_track_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="cloud-chaser track",
-        description="Download one SoundCloud or YouTube track, or save a local audio file.",
+        description="Download one track from a music streaming link, or save a local audio file.",
         epilog=(
             "Examples:\n"
-            "  cloud-chaser track https://soundcloud.com/you/track-slug\n"
-            "  cloud-chaser track https://youtu.be/VIDEO_ID\n"
-            "  cloud-chaser track -o ./recovered --format mp3 URL\n"
+            "  cloud-chaser track \"music streaming link\"\n"
+            "  cloud-chaser track -o ./recovered --format mp3 \"music streaming link\"\n"
             "  cloud-chaser track -o ./recovered --format mp3 ./mix.wav\n"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
         "url",
-        help="SoundCloud or YouTube track URL, or a local audio file",
+        help="music streaming link, or a local audio file",
     )
     parser.add_argument(
         "-o",
@@ -127,8 +126,8 @@ def track_main(argv: list[str] | None = None) -> int:
             saved = "Saved"
         else:
             raise ValueError(
-                "Not a local audio file or a SoundCloud or YouTube URL. "
-                "Pass a track link or an existing audio file."
+                "Not a local audio file or a music streaming link. "
+                "Pass a music streaming link or an existing audio file."
             )
     except (ValueError, FileNotFoundError) as exc:
         print(f"Error: {exc}", file=sys.stderr)

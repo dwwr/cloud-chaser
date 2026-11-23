@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Pull audio from SoundCloud or YouTube for tracks you own or have rights to download."""
+"""Pull audio from a music streaming link for tracks you own or have rights to download."""
 
 from __future__ import annotations
 
@@ -13,10 +13,10 @@ from yt_dlp.utils import DownloadError
 
 
 BANNER = """
-soundcloud-pull — recover audio from your SoundCloud or YouTube uploads
+soundcloud-pull — recover audio from a music streaming link
 
 Only use this for tracks you uploaded or otherwise have the right to download.
-SoundCloud and YouTube's terms restrict downloading other people's content without permission.
+Terms restrict downloading other people's content without permission.
 """.strip()
 
 
@@ -45,20 +45,18 @@ def upload_type_error() -> str:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Download your SoundCloud or YouTube audio (profile, playlist, or single URL).",
+        description="Download your audio from a music streaming link (profile, playlist, or single URL).",
         epilog=(
             "Examples:\n"
-            "  soundcloud-pull https://soundcloud.com/your-username\n"
-            "  soundcloud-pull https://soundcloud.com/your-username/track-name\n"
-            "  soundcloud-pull https://www.youtube.com/watch?v=VIDEO_ID\n"
-            "  soundcloud-pull -o ./recovered https://soundcloud.com/your-username\n"
-            "  soundcloud-pull --cookies cookies.txt https://soundcloud.com/you/private-track\n"
+            "  soundcloud-pull \"music streaming link\"\n"
+            "  soundcloud-pull -o ./recovered \"music streaming link\"\n"
+            "  soundcloud-pull --cookies cookies.txt \"music streaming link\"\n"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
         "url",
-        help="SoundCloud or YouTube profile, playlist, or single track URL",
+        help="music streaming link for a profile, playlist, or single track",
     )
     parser.add_argument(
         "-o",
@@ -134,7 +132,7 @@ def build_ydl_opts(
         "writeinfojson": True,
         "overwrites": False,
         "continue_dl": True,
-        # Prefer original / highest quality progressive streams when SoundCloud exposes them.
+        # Prefer original / highest quality progressive streams when the host exposes them.
         "format": "bestaudio/best",
     }
 
@@ -199,8 +197,8 @@ def is_supported_url(value: str) -> bool:
 def validate_source_url(url: str) -> None:
     if not is_supported_url(url):
         raise ValueError(
-            "URL does not look like SoundCloud or YouTube. "
-            "Pass a soundcloud.com, youtube.com, or youtu.be link."
+            "URL does not look like a music streaming link. "
+            "Pass a music streaming link."
         )
 
 

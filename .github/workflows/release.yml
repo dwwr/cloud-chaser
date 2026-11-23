@@ -1,0 +1,75 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Publish tags on the electron branch
+        id: gate
+        run: |
+          set -euo pipefail
+          git fetch origin main electron
+          if git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          elif git merge-base --is-ancestor "$GITHUB_SHA" origin/electron; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-node@v4
+        if: steps.gate.outputs.publish == 'true'
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            electron/package-lock.json
+
+      - name: Export the app page
+        if: steps.gate.outputs.publish == 'true'
+        working-directory: frontend
+        run: npm ci && npm run export
+
+      - name: Install the standalone Python
+        if: steps.gate.outputs.publish == 'true'
+        working-directory: electron
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: |
+          set -euo pipefail
+          case "$(uname -m)" in
+            arm64) arch=aarch64; sha=2f11b8aa3726bdbd87dd9eb76568412faddf4f47e26913fa45d6a2e424972acd ;;
+            x86_64) arch=x86_64; sha=b78a4c479f1964ec484880bee567568266f68da102269fb93a05fe8716b45f91 ;;
+            *) echo "Unsupported Mac architecture." >&2; exit 1 ;;
+          esac
+          url="https://github.com/astral-sh/python-build-standalone/releases/download/20261110/cpython-3.12.16+20261110-${arch}-apple-darwin-install_only_stripped.tar.gz"
+          mkdir -p vendor
+          curl -fsSL "$url" -o /tmp/cpython.tar.gz
+          echo "${sha}  /tmp/cpython.tar.gz" | shasum -a 256 -c -
+          tar -xzf /tmp/cpython.tar.gz -C vendor
+          vendor/python/bin/python3 -m pip install --disable-pip-version-check "yt-dlp>=2025.1.15"
+
+      - name: Pack the Mac zip
+        if: steps.gate.outputs.publish == 'true'
+        working-directory: electron
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: npm ci && npm run dist
+
+      - uses: softprops/action-gh-release@v2
+        if: steps.gate.outputs.publish == 'true'
+        with:
+          files: electron/dist/*.zip

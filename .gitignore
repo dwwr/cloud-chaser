@@ -26,3 +26,7 @@ cookies.txt
 .DS_Store
 frontend/node_modules/
 frontend/.next/
+frontend/out/
+electron/node_modules/
+electron/dist/
+electron/vendor/

@@ -75,10 +75,17 @@ form,
   margin-top: 1.75rem;
   padding: 1.15rem;
   background: var(--card);
-  border: 1px solid var(--line);
   border-radius: 1rem;
   display: flex;
   flex-direction: column;
+}
+
+form {
+  border: 0;
+}
+
+#result {
+  border: 1px solid var(--line);
 }
 
 #result[hidden] {
@@ -109,6 +116,11 @@ select {
   font: inherit;
   font-style: italic;
   background-color: transparent;
+}
+
+input[type="url"]::placeholder {
+  color: var(--ink);
+  opacity: 1;
 }
 
 select {
@@ -375,8 +387,33 @@ button:disabled {
 }
 
 .rights {
-  margin: 1rem 0.15rem 0;
+  margin: 0.85rem 0.15rem 0;
+  padding-bottom: 0.85rem;
+  color: var(--ok);
   font-size: 0.88rem;
+}
+
+#slogan {
+  display: block;
+  min-height: 2.64rem;
+}
+
+.sites {
+  display: flex;
+  justify-content: center;
+  gap: 1.25rem;
+  margin: 0.85rem 0.15rem 0;
+  font-size: 0.88rem;
+}
+
+.sites a {
+  color: var(--ok);
+  text-decoration: none;
+}
+
+.sites a:hover,
+.sites a:focus-visible {
+  text-decoration: underline;
 }
 
 #status {
@@ -411,7 +448,7 @@ button:disabled {
   padding: 0.75rem 0.85rem;
   border: 1px solid var(--line);
   border-radius: 0.75rem;
-  color: var(--ink);
+  color: #ccff00;
   text-decoration: none;
   overflow-wrap: anywhere;
 }
@@ -460,12 +497,11 @@ button:disabled {
   padding: 0.8rem;
   overflow: auto;
   border-radius: 0.75rem;
+  background: #141414;
   color: var(--ok);
-  font:
-    0.82rem/1.45 ui-monospace,
-    "SFMono-Regular",
-    Menlo,
-    monospace;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-size: 0.82rem;
+  line-height: 1.45;
   white-space: pre-wrap;
 }
 
