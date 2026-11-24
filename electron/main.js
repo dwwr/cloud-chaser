@@ -3,7 +3,7 @@ const { spawn } = require("child_process");
 const fs = require("fs");
 const http = require("http");
 const path = require("path");
-const { prepare } = require("./setup");
+const { prepare, supportEnv } = require("./setup");
 
 const FIT_CSS = [
   "html, body { margin: 0 !important; padding: 0 !important; min-height: 0 !important; height: 100% !important; background: #0080ff !important; overflow-x: hidden !important; overflow-y: auto !important; }",
@@ -175,14 +175,11 @@ function choosePort(preferred) {
 }
 
 function startServer(paths, support, ffmpegDir) {
-  const env = { ...process.env, PYTHONUNBUFFERED: "1" };
+  const env = { ...process.env, ...supportEnv(support) };
   env.CLOUD_CHASER_WEB_ROOT = paths.webRoot;
   if (paths.packaged) {
     env.CLOUD_CHASER_JOBS = path.join(support, "jobs");
   }
-  env.HF_HOME = path.join(support, "cache", "huggingface");
-  env.TORCH_HOME = path.join(support, "cache", "torch");
-  env.XDG_CACHE_HOME = path.join(support, "cache");
   env.PATH = [ffmpegDir, "/opt/homebrew/bin", "/usr/local/bin", env.PATH || ""]
     .filter(Boolean)
     .join(path.delimiter);

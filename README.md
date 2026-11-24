@@ -17,7 +17,7 @@ Unzip it and move `Cloud Chaser.app` into Applications.
 
 The app is not signed. The first time you open it, macOS blocks it. Open System Settings, go to Privacy & Security, and click Open Anyway next to the Cloud Chaser message. Confirm when macOS asks again.
 
-The first launch can take a while. Cloud Chaser installs the stem tools, and it downloads ffmpeg when your Mac does not already have it. Later launches skip that install.
+The first launch can take a while. Cloud Chaser installs its tools, the stem models, and ffmpeg. Later launches skip anything already installed.
 
 ## Command line
 
