@@ -11,12 +11,14 @@ Make instrumentals, split stems, export to different file types for remixing and
 
 ## Mac app
 
-Download `Cloud.Chaser-1.1.1-arm64-mac.zip` from the [GitHub Releases](https://github.com/dwwr/cloud-chaser/releases) page. This build is for Apple silicon Macs.
-
-Unzip it and move `Cloud Chaser.app` into Applications.
-
-The app is not signed. The first time you open it, macOS blocks it. Open System Settings, go to Privacy & Security, and click Open Anyway next to the Cloud Chaser message. Confirm when macOS asks again.
-
+**Mac (Apple silicon)** 
+1. download `Cloud.Chaser-1.1.1-arm64-mac.zip`
+2. unzip, drag .app to applications folder
+3. try to open it- it will fail, don't move to trash
+4. open Settings -> Privacy & Security, scroll to Security at bottom, and update "Allow applications from" -> App Store & Known Developers
+5. Try to open again, then allow the application from that same part of the security section
+6. First launch installs necessary dependencies & tools.
+   
 The first launch can take a while. Cloud Chaser installs its tools, the stem models, and ffmpeg. Later launches skip anything already installed.
 
 ## Command line
